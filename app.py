@@ -85,6 +85,22 @@ async def extract_profile_from_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+from typing import Dict, Any
+
+@app.post("/api/generate-ppt")
+async def generate_ppt(data: Dict[str, Any]):
+    try:
+        # Sauvegarder les donnees mises a jour
+        with open("resultat_cv.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+            
+        from generate_pptx import generate_bio_profile
+        output_file = generate_bio_profile()
+        return FileResponse(output_file, media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation", filename="BioProfile_Generated.pptx")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 
