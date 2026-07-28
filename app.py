@@ -94,8 +94,8 @@ async def generate_ppt(data: Dict[str, Any]):
         with open("resultat_cv.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
             
-        from generate_pptx import generate_bio_profile
-        output_file = generate_bio_profile()
+        from generate_pptx_v2 import generate_bio_profile_dynamic
+        output_file = generate_bio_profile_dynamic()
         return FileResponse(output_file, media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation", filename="BioProfile_Generated.pptx")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -11,6 +11,7 @@ resultat_cv.json
 sample_cv.txt
 *.pdf
 static/temp_photo.png
+BioProfile_Generated.pptx
 sm/
 
 # Configuration locale (Ollama / Environnement)

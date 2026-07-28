@@ -258,9 +258,9 @@ def extract_cv_data(cv_text: str) -> str:
 - projets_et_experiences : Liste d'objets contenant un "titre" et une "description" concise.
 - hard_skills : Langages de programmation, concepts techniques purs (ex: Python, Java, SQL).
 - outils_et_technologies : Frameworks, logiciels, bases de données , tous technologie et outils depends de metier(ex: MongoDB, FastAPI, Docker, Elasticsearch).
-- soft_skills : Compétences humaines (ex: Communication, travail en équipe).
+- soft_skills : Compétences humaines. ATTENTION : NE DOIT CONTENIR QUE LES SOFT SKILLS EXPLICITEMENT MENTIONNÉES DANS LE CV. Si aucune n'est mentionnée, renvoie une liste vide [].
 - langues : Langues parlées et niveaux.
- mandatory:si un champ est absent, il doit être présent mais vide,ne genere rien que le contenu du CV.
+ mandatory: si un champ est absent ou non mentionné dans le texte, il doit être présent mais vide (ex: liste vide [] ou chaîne vide ""). Ne génère STRICTEMENT RIEN d'inventé, base-toi uniquement sur le texte du CV. Ne devine aucune compétence.
 Tu peux ajouter d'autres clés si tu trouves des informations pertinentes.
 Ne génère QUE du JSON valide."""
             },

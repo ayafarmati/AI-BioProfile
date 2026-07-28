@@ -12,28 +12,34 @@ def generate_bio_profile(json_path="resultat_cv.json", template_path="BioPofile_
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    def flatten_skills(skills_data):
-        if isinstance(skills_data, str):
-            return skills_data
-        elif isinstance(skills_data, list):
+    def flatten_data(data_obj, sep=", ", is_lang=False):
+        if isinstance(data_obj, str):
+            return data_obj
+        elif isinstance(data_obj, list):
             flattened = []
-            for item in skills_data:
+            for item in data_obj:
                 if isinstance(item, str):
                     flattened.append(item)
                 elif isinstance(item, dict):
-                    flattened.extend(flatten_skills(item).split(", "))
-            return ", ".join(flattened)
-        elif isinstance(skills_data, dict):
+                    if 'langue' in item:
+                        niv = item.get('niveau', '')
+                        flattened.append(f"{item['langue']} - {niv}" if niv else item['langue'])
+                    else:
+                        flattened.extend(flatten_data(item, sep, is_lang).split(sep))
+            return sep.join(flattened)
+        elif isinstance(data_obj, dict):
             flattened = []
-            for v in skills_data.values():
-                if isinstance(v, str):
+            for k, v in data_obj.items():
+                if isinstance(v, str) and is_lang:
+                    flattened.append(f"{k} - {v}")
+                elif isinstance(v, str):
                     flattened.append(v)
                 elif isinstance(v, list):
-                    flattened.extend([str(x) for x in v])
+                    flattened.extend(flatten_data(v, sep, is_lang).split(sep))
                 elif isinstance(v, dict):
-                    flattened.extend(flatten_skills(v).split(", "))
-            return ", ".join(flattened)
-        return str(skills_data)
+                    flattened.extend(flatten_data(v, sep, is_lang).split(sep))
+            return sep.join(flattened)
+        return str(data_obj)
         
     prs = Presentation(template_path)
     slide = prs.slides[0]
@@ -92,10 +98,18 @@ def generate_bio_profile(json_path="resultat_cv.json", template_path="BioPofile_
         elif "DISPONIBILIT" in text_upper:
             shape.text_frame.clear()
             p = shape.text_frame.add_paragraph()
-            p.text = f"DISPONIBILITÉ:   {dispo_text}"
-            p.font.size = Pt(22)
-            p.font.bold = True
-            p.font.color.rgb = RGBColor(0, 0, 0)
+            
+            run1 = p.add_run()
+            run1.text = "DISPONIBILITÉ:   "
+            run1.font.size = Pt(26)
+            run1.font.bold = True
+            run1.font.color.rgb = RGBColor(0xFF, 0x52, 0xBA)
+            
+            run2 = p.add_run()
+            run2.text = dispo_text
+            run2.font.size = Pt(26)
+            run2.font.bold = True
+            run2.font.color.rgb = RGBColor(255, 255, 255)
             
     # Si le champ Nom Complet n'existait pas, on l'ajoute
     if nom:
@@ -107,14 +121,17 @@ def generate_bio_profile(json_path="resultat_cv.json", template_path="BioPofile_
 
     # 4. Langues
     langues = data.get("langues", [])
-    if isinstance(langues, list):
-        langues_str = "\n".join([f"{lang}" if isinstance(lang, str) else f"{lang.get('langue', '')} – {lang.get('niveau', '')}" for lang in langues])
-    else:
-        langues_str = str(langues)
+    langues_str = flatten_data(langues, sep="\n", is_lang=True)
     add_text_box(Emu(588266), Emu(7000000), Emu(4036957), Emu(1785964), langues_str, font_size=20, bold=True, rgb=RGBColor(255, 255, 255))
 
     # 5. Projets - UTILISATION D'UNE SEULE BOX POUR EVITER LE CHEVAUCHEMENT
     projets = data.get("projets_et_experiences", [])
+    if isinstance(projets, dict):
+        for v in projets.values():
+            if isinstance(v, list):
+                projets = v
+                break
+
     if projets:
         txBox_proj = slide.shapes.add_textbox(Emu(6388294), Emu(1000000), Emu(11297755), Emu(4000000))
         tf_proj = txBox_proj.text_frame
@@ -146,17 +163,17 @@ def generate_bio_profile(json_path="resultat_cv.json", template_path="BioPofile_
 
     # 6. Hard Skills
     skills = data.get("hard_skills", [])
-    skills_text = flatten_skills(skills)
+    skills_text = flatten_data(skills)
     add_text_box(Emu(5821465), Emu(5815490), Emu(3115572), Emu(4132468), skills_text, font_size=18, bold=True)
 
     # 7. Soft Skills
     soft_skills = data.get("soft_skills", [])
-    soft_skills_text = flatten_skills(soft_skills)
+    soft_skills_text = flatten_data(soft_skills)
     add_text_box(Emu(9546637), Emu(6020278), Emu(3565954), Emu(3722893), soft_skills_text, font_size=18, bold=True)
     
     # 8. Outils & Technologies
     outils = data.get("outils_et_technologies", [])
-    outils_text = flatten_skills(outils)
+    outils_text = flatten_data(outils)
     add_text_box(Emu(13655839), Emu(5944982), Emu(3962469), Emu(3313318), outils_text, font_size=18, bold=True)
 
     prs.save(output_path)
