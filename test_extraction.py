@@ -92,13 +92,36 @@ def extract_image_from_pdf(file_bytes: bytes) -> bytes:
             for img_idx, img in enumerate(image_list):
                 xref = img[0]
                 try:
-                    base_image = doc.extract_image(xref)
-                    if not base_image:
-                        continue
-                    image_bytes = base_image["image"]
-                    width = base_image["width"]
-                    height = base_image["height"]
-                except Exception:
+                    # Utiliser Pixmap au lieu de extract_image pour conserver le masque de transparence (SMask)
+                    pix = fitz.Pixmap(doc, xref)
+                    # Si l'image est en CMYK, la convertir en RGB
+                    if pix.n >= 5:
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
+                    
+                    # Convertir en bytes PNG
+                    raw_bytes = pix.tobytes("png")
+                    
+                    # Utiliser PIL pour forcer un fond blanc si l'image a de la transparence
+                    from PIL import Image
+                    import io
+                    img_pil = Image.open(io.BytesIO(raw_bytes))
+                    if img_pil.mode in ('RGBA', 'LA') or (img_pil.mode == 'P' and 'transparency' in img_pil.info):
+                        alpha = img_pil.convert('RGBA').split()[-1]
+                        bg = Image.new("RGB", img_pil.size, (255, 255, 255))
+                        bg.paste(img_pil, mask=alpha)
+                        img_pil = bg
+                    elif img_pil.mode != 'RGB':
+                        img_pil = img_pil.convert('RGB')
+                        
+                    output = io.BytesIO()
+                    img_pil.save(output, format="PNG")
+                    image_bytes = output.getvalue()
+                    
+                    width = pix.width
+                    height = pix.height
+                    pix = None # Libérer la mémoire
+                except Exception as e:
+                    print(f"[WARNING] Erreur lecture image xref {xref}: {e}")
                     continue
                 
                 # Aspect ratio en pixels
@@ -255,13 +278,13 @@ def extract_cv_data(cv_text: str) -> str:
 - nom_complet : Prénom et Nom.
 - titre_professionnel : Le titre professionnel ou poste visé (à déduire de l'en-tête du CV, du résumé ou de l'expérience la plus récente).
 - disponibilite : Doit TOUJOURS être "immédiate".
-- projets_et_experiences : Liste d'objets contenant un "titre" et une "description" concise.
-- hard_skills : Langages de programmation, concepts techniques purs (ex: Python, Java, SQL).
-- outils_et_technologies : Frameworks, logiciels, bases de données , tous technologie et outils depends de metier(ex: MongoDB, FastAPI, Docker, Elasticsearch).
+- projets_et_experiences : Liste d'objets contenant un "titre" et une "description" concise.ATTENTION : NE DOIT CONTENIR QUE LES PROJETS ET EXPÉRIENCES EXPLICITEMENT MENTIONNÉES DANS LE CV. Si aucune n'est mentionnée, renvoie une liste vide [].
+- hard_skills : Langages de programmation, concepts techniques purs (ex: Python, Java, SQL).ATTENTION : NE DOIT CONTENIR QUE LES HARD SKILLS EXPLICITEMENT MENTIONNÉES DANS LE CV. Si aucune n'est mentionnée, renvoie une liste vide [].
+- outils_et_technologies : Frameworks, logiciels, bases de données , tous technologie et outils depends de metier(ex: MongoDB, FastAPI, Docker, Elasticsearch).ATTENTION : NE DOIT CONTENIR QUE LES OUTILS ET TECHNOLOGIES EXPLICITEMENT MENTIONNÉES DANS LE CV. Si aucune n'est mentionnée, renvoie une liste vide [].
 - soft_skills : Compétences humaines. ATTENTION : NE DOIT CONTENIR QUE LES SOFT SKILLS EXPLICITEMENT MENTIONNÉES DANS LE CV. Si aucune n'est mentionnée, renvoie une liste vide [].
 - langues : Langues parlées et niveaux.
- mandatory: si un champ est absent ou non mentionné dans le texte, il doit être présent mais vide (ex: liste vide [] ou chaîne vide ""). Ne génère STRICTEMENT RIEN d'inventé, base-toi uniquement sur le texte du CV. Ne devine aucune compétence.
-Tu peux ajouter d'autres clés si tu trouves des informations pertinentes.
+ mandatory: si un champ est absent ou non mentionné dans le texte, il doit être présent mais vide (ex: liste vide [] ou chaîne vide ""). Ne génère STRICTEMENT RIEN d'inventé, base-toi uniquement sur le texte du CV. Ne devine aucune compétence, il faut extraire toutes les informations nécessaires du CV sans oublier aucun détails.
+Tu peux ajouter d'autres clés seulement si elles sont pertinentes et utiles.
 Ne génère QUE du JSON valide."""
             },
             {
@@ -298,10 +321,9 @@ if __name__ == "__main__":
     import sys
     import os
     
-    # Par défaut, on utilise sample_cv.txt
-    file_path = "sample_cv.txt"
     
-    # Si un argument est passé en ligne de commande, on l'utilise (ex: python test_extraction.py mon_cv.pdf)
+    
+    # Si un argument est passé en ligne de commande, on l'utilise (ex: python test_extraction.py mon_cv.pdf)ù
     if len(sys.argv) > 1:
         file_path = sys.argv[1]
         

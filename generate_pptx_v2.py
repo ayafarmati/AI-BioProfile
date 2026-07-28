@@ -23,7 +23,7 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
                 elif isinstance(item, dict):
                     if 'langue' in item:
                         niv = item.get('niveau', '')
-                        flattened.append(f"{item['langue']} - {niv}" if niv else item['langue'])
+                        flattened.append(f"{item['langue']} — {niv}" if niv else item['langue'])
                     else:
                         flattened.extend(flatten_data(item, sep, is_lang).split(sep))
             return sep.join(flattened)
@@ -31,7 +31,7 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
             flattened = []
             for k, v in data_obj.items():
                 if isinstance(v, str) and is_lang:
-                    flattened.append(f"{k} - {v}")
+                    flattened.append(f"{k} — {v}")
                 elif isinstance(v, str):
                     flattened.append(v)
                 elif isinstance(v, list):
@@ -62,6 +62,9 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
     hard = flatten_data(data.get("hard_skills", []))
     soft = flatten_data(data.get("soft_skills", []))
     outils = flatten_data(data.get("outils_et_technologies", []))
+
+    # Fixed base size for skills, let PowerPoint AutoFit handle any shrinking
+    uniform_skill_size = 14
 
     # Dictionnaire de remplacement simple
     replacements = {
@@ -122,45 +125,45 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
             shape.text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
             
             if isinstance(projets, list):
-                # Auto-ajustement ultra-agressif pour les projets
-                base_title_size = font_size.pt if font_size else 22
+                # Always use readable sizes; if there are many projects, let PowerPoint's AutoFit (TEXT_TO_FIT_SHAPE) scale them down naturally.
+                base_title_size = 18
+                desc_size = 14
+                space_size = 12
                 
-                if len(projets) >= 5:
-                    base_title_size = 11
-                    desc_size = 9
-                elif len(projets) == 4:
-                    base_title_size = 14
-                    desc_size = 11
-                elif len(projets) == 3:
+                if len(projets) == 4:
                     base_title_size = 16
+                    desc_size = 13
+                    space_size = 8
+                elif len(projets) >= 5:
+                    base_title_size = 14
                     desc_size = 12
-                else:
-                    desc_size = max(12, base_title_size - 4)
+                    space_size = 6
                 
                 for i, p_data in enumerate(projets):
                     titre_proj = p_data.get("titre", "") if isinstance(p_data, dict) else ""
                     desc_proj = p_data.get("description", "") if isinstance(p_data, dict) else str(p_data)
                     
-                    # Ajouter le titre
+                    # Ajouter le titre (Hot Pink)
+                    from pptx.dml.color import RGBColor
                     p = shape.text_frame.add_paragraph()
                     p.text = titre_proj
                     if font_name: p.font.name = font_name
                     p.font.size = Pt(base_title_size)
                     p.font.bold = True
-                    if font_color: p.font.color.rgb = font_color
+                    p.font.color.rgb = RGBColor(255, 105, 180) # Hot Pink comme l'original
                     
-                    # Ajouter la description
+                    # Ajouter la description (Noir et Bold)
                     p = shape.text_frame.add_paragraph()
                     p.text = desc_proj
                     if font_name: p.font.name = font_name
                     p.font.size = Pt(desc_size)
-                    p.font.bold = False
-                    if font_color: p.font.color.rgb = font_color
+                    p.font.bold = True
+                    p.font.color.rgb = RGBColor(0, 0, 0)
                     
-                    # Espace seulement s'il n'y a pas trop de projets
-                    if len(projets) <= 3 and i < len(projets) - 1:
+                    # Espace entre les projets
+                    if i < len(projets) - 1:
                         p_space = shape.text_frame.add_paragraph()
-                        p_space.font.size = Pt(max(6, base_title_size - 8))
+                        p_space.font.size = Pt(space_size)
             continue
 
         # 3. Gestion des remplacements classiques
@@ -172,12 +175,15 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
                         r.text = r.text.replace(tag, str_val)
                         shape.text_frame.word_wrap = True
                         
-                        # Auto-ajustement manuel basé sur la longueur du texte
-                        if len(str_val) > 70 and r.font.size:
-                            # Plus le texte est long, plus on réduit (jusqu'à 7pt)
-                            reduction = int((len(str_val) - 70) / 30)
-                            new_size = max(7, r.font.size.pt - reduction)
-                            r.font.size = Pt(new_size)
+                        # Application de la taille uniforme pour les compétences
+                        if tag in ["{{HARD}}", "{{SOFT}}", "{{OUTILS}}"]:
+                            r.font.size = Pt(uniform_skill_size)
+                        else:
+                            # Auto-ajustement manuel basé sur la longueur du texte pour les autres tags
+                            if len(str_val) > 70 and r.font.size:
+                                reduction = int((len(str_val) - 70) / 40)
+                                new_size = max(11, r.font.size.pt - reduction)
+                                r.font.size = Pt(new_size)
 
     # Supprimer les formes obsolètes (ex: boîte {{PHOTO}})
     for shape in shapes_to_delete:

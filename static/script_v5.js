@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     const extractBtn = document.getElementById('extract-btn');
-    const cvInput = document.getElementById('cv-input');
     const fileInput = document.getElementById('file-input');
     const dropZone = document.getElementById('drop-zone');
     const fileNameDisplay = document.getElementById('file-name-display');
@@ -11,9 +10,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyState = document.getElementById('empty-state');
     const generatePptBtn = document.getElementById('generate-ppt-btn');
 
+    // --- Function to preview PDF ---
+    function previewPDF(file) {
+        if (file && file.type === "application/pdf") {
+            const fileURL = URL.createObjectURL(file);
+            let preview = document.getElementById('pdf-preview');
+            if (!preview) {
+                preview = document.createElement('iframe');
+                preview.id = 'pdf-preview';
+                preview.style.width = '100%';
+                preview.style.height = '250px';
+                preview.style.marginTop = '15px';
+                preview.style.borderRadius = '8px';
+                preview.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                document.querySelector('.drop-zone-content').appendChild(preview);
+            }
+            preview.src = fileURL;
+        } else {
+            let preview = document.getElementById('pdf-preview');
+            if (preview) preview.remove();
+        }
+    }
+
     // --- Click to select file ---
     dropZone.addEventListener('click', (e) => {
-        if (e.target !== cvInput) {
+        if (e.target.id !== 'pdf-preview') {
             fileInput.click();
         }
     });
@@ -21,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', () => {
         if (fileInput.files.length > 0) {
             fileNameDisplay.textContent = `Fichier sélectionné : ${fileInput.files[0].name}`;
-            cvInput.value = ''; // Clear text if file selected
+            previewPDF(fileInput.files[0]);
         }
     });
 
@@ -41,16 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.dataTransfer.files.length > 0) {
             fileInput.files = e.dataTransfer.files;
             fileNameDisplay.textContent = `Fichier sélectionné : ${fileInput.files[0].name}`;
-            cvInput.value = '';
+            previewPDF(fileInput.files[0]);
         }
     });
 
     extractBtn.addEventListener('click', async () => {
-        const text = cvInput.value.trim();
         const file = fileInput.files[0];
 
-        if (!text && !file) {
-            showToast('Veuillez sélectionner un fichier ou coller le texte du CV.', 'error');
+        if (!file) {
+            showToast('Veuillez sélectionner un fichier PDF ou TXT.', 'error');
             return;
         }
 
@@ -68,12 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 response = await fetch('/api/extract-file', {
                     method: 'POST',
                     body: formData
-                });
-            } else {
-                response = await fetch('/api/extract', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cv_text: text })
                 });
             }
 
