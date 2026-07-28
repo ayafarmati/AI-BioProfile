@@ -5,6 +5,8 @@ import pytesseract
 from PIL import Image
 import io
 import os
+import zipfile
+from docx import Document
 
 # Définir le chemin par défaut de l'exécutable Tesseract sous Windows
 TESSERACT_DEFAULT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -66,6 +68,25 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         text = perform_ocr_on_pdf(doc)
         
     return text
+
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    """
+    Extrait le texte brut d'un fichier DOCX à partir de ses octets.
+    """
+    try:
+        doc = Document(io.BytesIO(file_bytes))
+        text = "\n".join([para.text for para in doc.paragraphs])
+        
+        # Extraire aussi le texte des tableaux
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    text += cell.text + "\n"
+        
+        return text
+    except Exception as e:
+        print(f"Erreur lors de l'extraction de texte du DOCX : {e}")
+        return ""
 
 def extract_image_from_pdf(file_bytes: bytes) -> bytes:
     """
@@ -258,6 +279,56 @@ def extract_image_from_pdf(file_bytes: bytes) -> bytes:
         print(f"Erreur d'extraction d'image : {e}")
         return None
 
+def extract_image_from_docx(file_bytes: bytes) -> bytes:
+    """
+    Traite le fichier DOCX comme une archive ZIP et cherche l'image de profil
+    dans le dossier word/media/.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+            # Chercher tous les fichiers dans word/media/
+            image_files = [f for f in z.namelist() if f.startswith('word/media/') and f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+            
+            if not image_files:
+                return None
+                
+            candidates = []
+            for img_path in image_files:
+                with z.open(img_path) as img_f:
+                    img_data = img_f.read()
+                    
+                    try:
+                        from PIL import Image
+                        img_pil = Image.open(io.BytesIO(img_data))
+                        width, height = img_pil.size
+                        
+                        # Filtrer les petites icônes
+                        if width < 50 or height < 50:
+                            continue
+                            
+                        # Calculer un score basé sur le ratio (idéalement 1:1)
+                        aspect_ratio = width / height if height != 0 else 1.0
+                        score = 100.0 - (30.0 * abs(1.0 - aspect_ratio))
+                        
+                        # Favoriser les images de taille moyenne (photo de profil)
+                        # au lieu d'énormes bannières de fond
+                        if width > 1000 or height > 1000:
+                            score -= 30.0
+                            
+                        candidates.append((score, img_data))
+                    except Exception:
+                        continue
+                        
+            if candidates:
+                # Trier par score décroissant
+                candidates.sort(key=lambda x: x[0], reverse=True)
+                return candidates[0][1]
+                
+        return None
+    except Exception as e:
+        print(f"Erreur d'extraction d'image depuis DOCX : {e}")
+        return None
+
 # ---------------------------------------------------------
 # CONFIGURATION DE L'API LOCALE DIRECTE (OLLAMA NATIVE)
 # AUCUN SCHÉMA STRICT (Sortie JSON Libre)
@@ -333,10 +404,13 @@ if __name__ == "__main__":
         
     print(f"Lecture du fichier : {file_path}")
     
-    # Gérer le cas spécifique du PDF
+    # Gérer le cas spécifique du PDF et DOCX
     if file_path.lower().endswith(".pdf"):
         with open(file_path, "rb") as f:
             cv_content = extract_text_from_pdf(f.read())
+    elif file_path.lower().endswith(".docx"):
+        with open(file_path, "rb") as f:
+            cv_content = extract_text_from_docx(f.read())
     else:
         with open(file_path, "r", encoding="utf-8") as f:
             cv_content = f.read()

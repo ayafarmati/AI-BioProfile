@@ -6,7 +6,7 @@ import json
 import time
 
 # Importer notre fonction d'extraction existante et le traitement de fichier PDF
-from test_extraction import extract_cv_data, extract_text_from_pdf, extract_image_from_pdf
+from test_extraction import extract_cv_data, extract_text_from_pdf, extract_image_from_pdf, extract_text_from_docx, extract_image_from_docx
 
 app = FastAPI(title="AI Bio Profile Generator API")
 
@@ -52,8 +52,20 @@ async def extract_profile_from_file(file: UploadFile = File(...)):
         
         if filename.endswith(".pdf"):
             cv_text = extract_text_from_pdf(content)
-            # Extraire la photo de profil si elle existe
             image_bytes = extract_image_from_pdf(content)
+            if image_bytes:
+                temp_img_path = "static/temp_photo.png"
+                if os.path.exists(temp_img_path):
+                    try:
+                        os.remove(temp_img_path)
+                    except Exception:
+                        pass
+                with open(temp_img_path, "wb") as img_f:
+                    img_f.write(image_bytes)
+                photo_path = f"/static/temp_photo.png?v={int(time.time())}"
+        elif filename.endswith(".docx"):
+            cv_text = extract_text_from_docx(content)
+            image_bytes = extract_image_from_docx(content)
             if image_bytes:
                 temp_img_path = "static/temp_photo.png"
                 if os.path.exists(temp_img_path):
@@ -67,7 +79,7 @@ async def extract_profile_from_file(file: UploadFile = File(...)):
         elif filename.endswith(".txt"):
             cv_text = content.decode("utf-8", errors="replace")
         else:
-            raise HTTPException(status_code=400, detail="Format non supporté (PDF et TXT uniquement).")
+            raise HTTPException(status_code=400, detail="Format non supporté (PDF, DOCX et TXT uniquement).")
             
         if not cv_text.strip():
             raise HTTPException(status_code=400, detail="Le fichier est vide ou le texte n'a pas pu être lu.")
