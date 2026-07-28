@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import json
+import time
 
 # Importer notre fonction d'extraction existante et le traitement de fichier PDF
 from test_extraction import extract_cv_data, extract_text_from_pdf, extract_image_from_pdf
@@ -62,7 +63,7 @@ async def extract_profile_from_file(file: UploadFile = File(...)):
                         pass
                 with open(temp_img_path, "wb") as img_f:
                     img_f.write(image_bytes)
-                photo_path = "/static/temp_photo.png"
+                photo_path = f"/static/temp_photo.png?v={int(time.time())}"
         elif filename.endswith(".txt"):
             cv_text = content.decode("utf-8", errors="replace")
         else:

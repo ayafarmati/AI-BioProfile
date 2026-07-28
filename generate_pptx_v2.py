@@ -21,9 +21,10 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
                 if isinstance(item, str):
                     flattened.append(item)
                 elif isinstance(item, dict):
-                    if 'langue' in item:
+                    lang_name = item.get('langue') or item.get('nom')
+                    if lang_name:
                         niv = item.get('niveau', '')
-                        flattened.append(f"{item['langue']} — {niv}" if niv else item['langue'])
+                        flattened.append(f"{lang_name} — {niv}" if niv else lang_name)
                     else:
                         flattened.extend(flatten_data(item, sep, is_lang).split(sep))
             return sep.join(flattened)
@@ -92,8 +93,11 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
             left, top, width, height = shape.left, shape.top, shape.width, shape.height
             
             photo_path = data.get("photo_path")
-            if photo_path and photo_path.startswith("/"):
-                photo_path = photo_path[1:]
+            if photo_path:
+                if "?" in photo_path:
+                    photo_path = photo_path.split("?")[0]
+                if photo_path.startswith("/"):
+                    photo_path = photo_path[1:]
                 
             if photo_path and os.path.exists(photo_path):
                 try:
