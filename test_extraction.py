@@ -355,7 +355,6 @@ def extract_cv_data(cv_text: str) -> str:
 - soft_skills : Compétences humaines. ATTENTION : NE DOIT CONTENIR QUE LES SOFT SKILLS EXPLICITEMENT MENTIONNÉES DANS LE CV. Si aucune n'est mentionnée, renvoie une liste vide [].
 - langues : Langues parlées et niveaux.
  mandatory: si un champ est absent ou non mentionné dans le texte, il doit être présent mais vide (ex: liste vide [] ou chaîne vide ""). Ne génère STRICTEMENT RIEN d'inventé, base-toi uniquement sur le texte du CV. Ne devine aucune compétence, il faut extraire toutes les informations nécessaires du CV sans oublier aucun détails.
-Tu peux ajouter d'autres clés seulement si elles sont pertinentes et utiles.
 Ne génère QUE du JSON valide."""
             },
             {

@@ -5,7 +5,7 @@ from pptx import Presentation
 from pptx.util import Pt
 from pptx.enum.text import MSO_AUTO_SIZE
 
-def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="BioPofile_Template.pptx", output_path="BioProfile_Generated.pptx"):
+def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="BioProfile_OFF.pptx", output_path="BioProfile_Generated.pptx"):
     if not os.path.exists(json_path):
         raise FileNotFoundError(f"Le fichier JSON {json_path} est introuvable.")
         
@@ -42,6 +42,13 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
             return sep.join(flattened)
         return str(data_obj)
         
+    def get_all_shapes(shapes):
+        for shape in shapes:
+            if shape.has_text_frame:
+                yield shape
+            if shape.shape_type == 6: # Group shape
+                yield from get_all_shapes(shape.shapes)
+                
     prs = Presentation(template_path)
     slide = prs.slides[0]
 
@@ -81,12 +88,16 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
     # Liste pour mémoriser les formes à supprimer (comme {{PHOTO}})
     shapes_to_delete = []
 
-    for shape in slide.shapes:
-        if not shape.has_text_frame:
-            continue
-            
+    for shape in get_all_shapes(slide.shapes):
         text = shape.text
         
+        # Remove standalone PROJET_TITRE if we inject titles into PROJET_DESC
+        if "{{PROJET_TITRE}}" in text:
+            for p in shape.text_frame.paragraphs:
+                for r in p.runs:
+                    if "{{PROJET_TITRE}}" in r.text:
+                        r.text = r.text.replace("{{PROJET_TITRE}}", "")
+                        
         # 1. Gestion de l'Image de profil
         if "{{PHOTO}}" in text:
             # Récupérer les coordonnées et dimensions
@@ -110,7 +121,7 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
             continue
 
         # 2. Gestion des Projets (Formatage complexe avec Titre et Description)
-        if "{{PROJETS}}" in text:
+        if "{{PROJETS}}" in text or "{{PROJET_DESC}}" in text:
             # Sauvegarder le style initial de la balise
             font_size = None
             font_bold = None
@@ -147,14 +158,15 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
                     titre_proj = p_data.get("titre", "") if isinstance(p_data, dict) else ""
                     desc_proj = p_data.get("description", "") if isinstance(p_data, dict) else str(p_data)
                     
-                    # Ajouter le titre (Hot Pink)
+                    # Ajouter le titre
                     from pptx.dml.color import RGBColor
                     p = shape.text_frame.add_paragraph()
                     p.text = titre_proj
                     if font_name: p.font.name = font_name
                     p.font.size = Pt(base_title_size)
                     p.font.bold = True
-                    p.font.color.rgb = RGBColor(255, 105, 180) # Hot Pink comme l'original
+                    # If using PROJET_DESC, use dark blue for title to match the original layout, else Hot Pink
+                    p.font.color.rgb = RGBColor(0, 51, 102) if "{{PROJET_DESC}}" in text else RGBColor(255, 105, 180)
                     
                     # Ajouter la description (Noir et Bold)
                     p = shape.text_frame.add_paragraph()
