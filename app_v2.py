@@ -21,7 +21,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 async def read_index():
-    return FileResponse("static/index.html")
+    return FileResponse("static/index_v2.html")
 
 @app.post("/api/extract")
 async def extract_profile(request: ExtractRequest):
@@ -119,4 +119,5 @@ async def generate_ppt(data: Dict[str, Any]):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app_v2:app", host="127.0.0.1", port=8000, reload=True)
+
