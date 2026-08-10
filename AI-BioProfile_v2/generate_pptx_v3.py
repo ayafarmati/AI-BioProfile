@@ -65,9 +65,31 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
         dispo = "Immédiate"
         
     langues = format_as_newlines(flatten_data(data.get("langues", []), sep="\n", is_lang=True))
-    hard = format_as_newlines(flatten_data(data.get("hard_skills", [])))
+    
+    def format_categorized_skills(skills_raw):
+        if isinstance(skills_raw, list) and len(skills_raw) > 0 and isinstance(skills_raw[0], dict) and "categorie" in skills_raw[0]:
+            lines = []
+            for hs in skills_raw:
+                cat = hs.get("categorie", "Général")
+                comps = hs.get("competences", [])
+                if isinstance(comps, list):
+                    comps_str = ", ".join(str(c) for c in comps if c)
+                else:
+                    comps_str = str(comps)
+                
+                if not comps_str:
+                    continue
+                    
+                if cat.lower() == "général":
+                    lines.append(comps_str)
+                else:
+                    lines.append(f"{cat} : {comps_str}")
+            return "\n".join(lines)
+        return format_as_newlines(flatten_data(skills_raw))
+
+    hard = format_categorized_skills(data.get("hard_skills", []))
     soft = format_as_newlines(flatten_data(data.get("soft_skills", [])))
-    outils = format_as_newlines(flatten_data(data.get("outils_et_technologies", [])))
+    outils = format_categorized_skills(data.get("outils_et_technologies", []))
     
     projets = data.get("projets_et_experiences", [])
     if isinstance(projets, dict):
@@ -151,20 +173,29 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
         if tag in ["{{TITRE}}", "{{NOM}}"] and len(str(replacement_text)) > 40:
             reduction = int((len(str(replacement_text)) - 40) / 15)
             new_size_pt = max(10, original_size_pt - reduction)
-        elif len(lines) > 6 and tag not in ["{{PROJET_DESC}}"]:
-            # Reduce font size significantly for long lists (e.g., Technical Skills)
-            reduction = (len(lines) - 6) * 1.0
-            new_size_pt = max(8, original_size_pt - reduction)
+        elif tag not in ["{{PROJET_DESC}}"]:
+            shape.text_frame.word_wrap = True
+            shape.text_frame.auto_size = MSO_AUTO_SIZE.NONE
+            
+            # On estime le nombre de lignes (environ 45 caractères par ligne pour ces petites colonnes)
+            estimated_lines = sum((len(line) // 45) + 1 for line in lines)
+            
+            # Si le texte est très long, on réduit DOUCEMENT la police (sans la rendre microscopique)
+            if estimated_lines > 6:
+                reduction = (estimated_lines - 6) * 0.4
+                # On bloque à 9.5pt minimum pour que ça reste très lisible et proportionnel
+                new_size_pt = max(9.5, original_size_pt - reduction)
 
-        # Apply new size to the first run
-        target_r.font.size = Pt(new_size_pt)
+        # Apply new size to the first run ONLY if it changed
+        if new_size_pt != original_size_pt:
+            target_r.font.size = Pt(new_size_pt)
         target_r.text = target_r.text.replace(tag, lines[0])
         
-        # If font size was reduced, we must also remove fixed line spacing from the paragraph 
-        # to prevent huge vertical gaps between tiny text.
+        # If font size was reduced, on supprime juste l'espace ENTRE les paragraphes (spcAft, spcBef) 
+        # mais ON GARDE l'espace entre les lignes (lnSpc) pour que le texte ne soit pas écrasé.
         if new_size_pt < original_size_pt and target_p._element.pPr is not None:
             for child in list(target_p._element.pPr):
-                if child.tag.endswith('lnSpc') or child.tag.endswith('spcAft') or child.tag.endswith('spcBef'):
+                if child.tag.endswith('spcAft') or child.tag.endswith('spcBef'):
                     target_p._element.pPr.remove(child)
         
         current_p_elem = target_p._element
@@ -178,13 +209,15 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
             if hasattr(target_r, '_r') and target_r._r.rPr is not None:
                 new_rPr = copy.deepcopy(target_r._r.rPr)
                 # Remove the size from copied rPr so we can set our own dynamically calculated size
-                for child in list(new_rPr):
-                    if child.tag.endswith('sz'):
-                        new_rPr.remove(child)
+                if new_size_pt != original_size_pt:
+                    for child in list(new_rPr):
+                        if child.tag.endswith('sz'):
+                            new_rPr.remove(child)
                 new_run._r.insert(0, new_rPr)
                 
             new_run.text = line
-            new_run.font.size = Pt(new_size_pt)
+            if new_size_pt != original_size_pt:
+                new_run.font.size = Pt(new_size_pt)
             
             if target_r.font.bold is not None:
                 new_run.font.bold = target_r.font.bold

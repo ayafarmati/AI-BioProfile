@@ -362,6 +362,14 @@ class ProjetExperience(BaseModel):
         description="Les tâches réalisées. Sépare chaque tâche par un retour à la ligne, SANS ajouter de puces (pas de tirets ni de points au début). Exemple: 'Analyser les exigences...\nConcevoir et développer...'"
     )
 
+class CompetenceCategorie(BaseModel):
+    categorie: str = Field(
+        description="Le nom de la catégorie (ex: 'Solveurs', 'Langages', 'Prétraitement', etc.). Si non spécifié, utiliser 'Général'."
+    )
+    competences: List[str] = Field(
+        description="La liste des compétences techniques appartenant à cette catégorie."
+    )
+
 class CVExtraction(BaseModel):
     nom_complet: str = Field(
         description="Nom complet du candidat, idéalement tout en MAJUSCULES (ex: EZZAHRA ELMOUSSAOUY)."
@@ -376,14 +384,14 @@ class CVExtraction(BaseModel):
     langues: List[str] = Field(
         description="Liste des langues. Exemple: ['Arabic (native)', 'French (Maitrise C2)']"
     )
-    hard_skills: List[str] = Field(
-        description="Liste des compétences techniques (Technical Skills). Exemple: ['Conception et modélisation 3D', 'Analyse de faisabilité']"
+    hard_skills: List[CompetenceCategorie] = Field(
+        description="Liste des compétences techniques (Technical Skills) EXPLICITEMENT MENTIONNÉES, groupées par catégories. Ne JAMAIS déduire ou copier ces compétences à partir du texte des expériences ou des projets. Si non spécifié clairement sous forme de compétence, laisser VIDE."
     )
     soft_skills: List[str] = Field(
-        description="Liste des compétences comportementales (Soft Skills). Exemple: ['Esprit d'analyse', 'Rigueur technique']"
+        description="Liste des compétences comportementales (Soft Skills) EXPLICITEMENT MENTIONNÉES. Ne JAMAIS déduire ou deviner ces compétences à partir des expériences (ex: ne pas déduire 'Autonomie' ou 'Rigueur analytique' d'un projet). Si aucune n'est écrite clairement, laisser VIDE. Exemple: ['Esprit d'analyse', 'Rigueur']"
     )
-    outils_et_technologies: List[str] = Field(
-        description="Liste des outils logiciels (Tools). Exemple: ['CATIA V6', 'PLM']"
+    outils_et_technologies: List[CompetenceCategorie] = Field(
+        description="Liste des outils logiciels (Tools), groupés par catégories (ex: 'CAO', 'Bureautique', 'Bases de données')."
     )
     autres_informations: str = Field(
         default="",
@@ -403,8 +411,8 @@ def extract_cv_data(cv_text: str) -> str:
     system_prompt = (
         "Tu es un expert RH en extraction de données de CV.\n"
         "Extrais toutes les informations du CV fourni.\n"
-        "Ne génère STRICTEMENT RIEN d'inventé, base-toi uniquement sur le texte du CV.\n"
-        "Si une information n'est pas mentionnée, laisse la liste vide ou la chaîne vide.\n"
+        "Ne génère STRICTEMENT RIEN d'inventé, et ne DÉDUIS AUCUNE information (notamment les soft skills). Base-toi uniquement sur le texte EXPLICITE du CV.\n"
+        "Si une information ou une compétence n'est pas clairement écrite noir sur blanc, laisse la liste vide ou la chaîne vide.\n"
         "\nExemple de comportement attendu :\n"
         "Si le CV contient 'Développeur Python. Email: jean@mail.com. Outils: Git, Docker.', tu dois mettre 'Git' et 'Docker' dans outils_et_technologies, et 'Email: jean@mail.com' dans autres_informations."
     )

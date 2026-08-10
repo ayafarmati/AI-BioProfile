@@ -15,7 +15,54 @@ from requests.exceptions import ConnectionError, Timeout
 from docx import Document
 from PIL import Image
 
-from test_extraction_v2 import CVExtraction
+from pydantic import BaseModel, Field
+
+class ProjetExperience(BaseModel):
+    titre: str = Field(
+        description="Le titre de l'expérience avec la date. Exemple: '02/2026 – Present: Ingénieur Architecture & Implantation véhicule'"
+    )
+    description: str = Field(
+        description="Les tâches réalisées. Sépare chaque tâche par un retour à la ligne, SANS ajouter de puces (pas de tirets ni de points au début). Exemple: 'Analyser les exigences...\nConcevoir et développer...'"
+    )
+
+class CompetenceCategorie(BaseModel):
+    categorie: str = Field(
+        description="Le nom de la catégorie (ex: 'Solveurs', 'Langages', 'Prétraitement', etc.). Si non spécifié, utiliser 'Général'."
+    )
+    competences: List[str] = Field(
+        description="La liste des compétences techniques appartenant à cette catégorie."
+    )
+
+class CVExtraction(BaseModel):
+    nom_complet: str = Field(
+        description="Nom complet du candidat, idéalement tout en MAJUSCULES (ex: EZZAHRA ELMOUSSAOUY)."
+    )
+    titre_professionnel: str = Field(
+        description="Le titre professionnel visé (ex: Ingénieur Architecture Implantation véhicule)."
+    )
+    disponibilite: str = Field(
+        default="Immédiate",
+        description="Disponibilité du candidat."
+    )
+    langues: List[str] = Field(
+        description="Liste des langues. Exemple: ['Arabic (native)', 'French (Maitrise C2)']"
+    )
+    hard_skills: List[CompetenceCategorie] = Field(
+        description="Liste des compétences techniques (Technical Skills) EXPLICITEMENT MENTIONNÉES, groupées par catégories. Ne JAMAIS déduire ou copier ces compétences à partir du texte des expériences ou des projets. Si non spécifié clairement sous forme de compétence, laisser VIDE."
+    )
+    soft_skills: List[str] = Field(
+        description="Liste des compétences comportementales (Soft Skills) EXPLICITEMENT MENTIONNÉES. Ne JAMAIS déduire ou deviner ces compétences à partir des expériences. Si aucune n'est écrite clairement, laisser VIDE. Exemple: ['Esprit d'analyse', 'Rigueur']"
+    )
+    outils_et_technologies: List[CompetenceCategorie] = Field(
+        description="Liste des outils logiciels (Tools), groupés par catégories (ex: 'CAO', 'Bureautique', 'Bases de données')."
+    )
+    autres_informations: str = Field(
+        default="",
+        description="Toutes les autres informations présentes sur le CV (email, téléphone, adresse, liens, loisirs, etc.) qui ne correspondent pas EXACTEMENT aux autres champs. Mets TOUT le reste ici pour ne pas polluer les outils ou compétences."
+    )
+    projets_et_experiences: List[ProjetExperience] = Field(
+        description="Liste des expériences professionnelles et projets pertinents."
+    )
 
 
 TESSERACT_DEFAULT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -345,7 +392,7 @@ def _build_chat_payload(cv_text: str, page_images_base64: Optional[List[str]] = 
         "Tu es un expert en Ressources Humaines spécialisé dans l'analyse de Curriculum Vitae (CV).\n"
         "Ta mission est d'extraire les informations du CV fourni (texte ou image) de manière précise, exhaustive et structurée.\n\n"
         "### RÈGLES STRICTES :\n"
-        "1. FIDÉLITÉ ABSOLUE : N'invente AUCUNE information. Base-toi exclusivement sur le contenu du CV.\n"
+        "1. FIDÉLITÉ ABSOLUE : N'invente et ne déduis AUCUNE information (surtout pas les Soft Skills). Base-toi exclusivement sur le texte explicite du CV. Si ce n'est pas écrit clairement, laisse vide.\n"
         "2. VALEURS MANQUANTES : Si une information est absente, laisse la liste vide `[]` ou la chaîne de caractères vide `\"\"` selon le type attendu. N'utilise pas de mentions comme 'Non spécifié'.\n"
         "3. CATÉGORISATION : Assure-toi de lister seulement les informations pour chaque clé,bien différencier les outils/technologies (Tools), les compétences techniques (Hard Skills) et les compétences comportementales (Soft Skills).\n"
         "4. FORMAT DE SORTIE : Réponds UNIQUEMENT avec un objet JSON valide. Ne rajoute aucun texte avant ou après, ni de balises markdown. Le JSON doit correspondre EXACTEMENT à ce schéma :\n"
