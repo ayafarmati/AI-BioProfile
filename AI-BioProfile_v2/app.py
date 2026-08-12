@@ -5,8 +5,8 @@ from pydantic import BaseModel
 import json
 import time
 
-# Importer notre fonction d'extraction VLM et le traitement de fichier
-from extraction_lmstudio import extract_cv_data_vlm, extract_text_from_pdf, extract_image_from_pdf, extract_text_from_docx, extract_image_from_docx, pdf_pages_to_base64_images
+# Importer notre fonction d'extraction locale (Ollama text-only) et le traitement de fichier
+from test_extraction_v2 import extract_cv_data, extract_text_from_pdf, extract_image_from_pdf, extract_text_from_docx, extract_image_from_docx
 
 app = FastAPI(title="AI Bio Profile Generator API")
 
@@ -56,8 +56,8 @@ async def get_latest_profile():
 @app.post("/api/extract")
 async def extract_profile(request: ExtractRequest):
     try:
-        # Appeler notre modèle local via OpenAI API
-        json_string = extract_cv_data_vlm(request.cv_text)
+        # Appeler notre modèle local via Ollama
+        json_string = extract_cv_data(request.cv_text)
         json_data = json.loads(json_string)
         
         # S'assurer que photo_path est présent
@@ -165,7 +165,6 @@ async def extract_profile_from_file(file: UploadFile = File(...)):
         page_images_base64 = None
         if filename.endswith(".pdf"):
             cv_text = extract_text_from_pdf(content)
-            page_images_base64 = pdf_pages_to_base64_images(content)
             image_bytes = extract_image_from_pdf(content)
             if image_bytes:
                 temp_img_path = "static/temp_photo.png"
@@ -198,7 +197,13 @@ async def extract_profile_from_file(file: UploadFile = File(...)):
         if not cv_text.strip() and not page_images_base64:
             raise HTTPException(status_code=400, detail="Le fichier est vide ou le texte n'a pas pu être lu.")
             
-        json_string = extract_cv_data_vlm(cv_text, page_images_base64)
+        # SAUVEGARDE DU TEXTE EXTRAIT AVANT ENVOI AU LLM
+        debug_text_path = f"uploads/{safe_filename}_extracted.md"
+        with open(debug_text_path, "w", encoding="utf-8") as f:
+            f.write(cv_text)
+        print(f"[DEBUG] Texte extrait (Markdown/Brut) sauvegardé dans : {debug_text_path}")
+            
+        json_string = extract_cv_data(cv_text)
         json_data = json.loads(json_string)
         
         # Ajouter le chemin de la photo de profil et du PDF original
@@ -241,7 +246,6 @@ def process_single_file(job_id, file_info):
         page_images_base64 = None
         if filename.endswith(".pdf"):
             cv_text = extract_text_from_pdf(content)
-            page_images_base64 = pdf_pages_to_base64_images(content)
             image_bytes = extract_image_from_pdf(content)
             if image_bytes:
                 temp_img_path = f"static/temp_{uuid.uuid4().hex[:8]}.png"
@@ -268,9 +272,16 @@ def process_single_file(job_id, file_info):
             batch_jobs[job_id]["files"][filename]["message"] = "Texte vide."
             return
         
+        # SAUVEGARDE DU TEXTE EXTRAIT AVANT ENVOI AU LLM
+        safe_base = filename.replace(" ", "_")
+        debug_text_path = f"uploads/{int(time.time())}_{safe_base}_extracted.md"
+        with open(debug_text_path, "w", encoding="utf-8") as f:
+            f.write(cv_text)
+        print(f"[DEBUG BATCH] Texte extrait sauvegardé dans : {debug_text_path}")
+        
         batch_jobs[job_id]["files"][filename]["message"] = "Analyse IA..."
         
-        json_string = extract_cv_data_vlm(cv_text, page_images_base64)
+        json_string = extract_cv_data(cv_text)
         json_data = json.loads(json_string)
         json_data["photo_path"] = photo_path
         json_data["pdf_path"] = pdf_path

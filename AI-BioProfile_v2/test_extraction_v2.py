@@ -56,36 +56,109 @@ def perform_ocr_on_pdf(doc) -> str:
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     """
-    Extrait le texte brut d'un fichier PDF à partir de ses octets.
-    Si le document est scanné (pas de texte natif extrait), applique l'OCR local.
+    Extrait le texte d'un fichier PDF au format Markdown avec pymupdf4llm.
+    Convertit ensuite les tableaux Markdown (|---|) en tableaux HTML (<table><tr><td>...).
     """
     doc = fitz.open(stream=file_bytes, filetype="pdf")
     text = ""
-    for page in doc:
-        text += page.get_text() + "\n"
+    print("[INFO] Lancement de l'extraction avec pymupdf4llm (Markdown)...")
+    
+    try:
+        import pymupdf4llm
+        text = pymupdf4llm.to_markdown(doc)
+    except ImportError:
+        print("[WARNING] pymupdf4llm non installé. Fallback sur fitz pur.")
+        for page in doc:
+            text += page.get_text() + "\n"
+            
+    # --- CONVERSION DES TABLEAUX MARKDOWN EN HTML ---
+    lines = text.split('\n')
+    in_table = False
+    html_lines = []
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line.startswith('|') and stripped_line.endswith('|') and len(stripped_line) > 1:
+            if not in_table:
+                html_lines.append('<table>')
+                in_table = True
+            
+            # Ignorer la ligne de séparation (ex: |---|---|)
+            # On vérifie s'il y a autre chose que des |, -, :, ou des espaces
+            chars = set(stripped_line.replace('|', '').replace(':', '').replace('-', '').replace(' ', ''))
+            if not chars:
+                continue
+                
+            # Extraire les cellules et construire la ligne HTML
+            # On enlève le premier et le dernier '|'
+            inner_content = stripped_line[1:-1]
+            cells = inner_content.split('|')
+            row_html = '<tr>' + ''.join(f'<td>{cell.strip()}</td>' for cell in cells) + '</tr>'
+            html_lines.append(row_html)
+        else:
+            if in_table:
+                html_lines.append('</table>')
+                in_table = False
+            html_lines.append(line)
+            
+    if in_table:
+        html_lines.append('</table>')
         
-    # Si le texte extrait est extrêmement court (seuil de 150 caractères), on applique l'OCR
-    if len(text.strip()) < 150 and len(doc) > 0:
-        print("[WARNING] PDF scanne detecte (texte extrait insuffisant). Lancement de l'OCR local...")
+    text = '\n'.join(html_lines)
+                
+    # Si le texte extrait est quasi vide, on lance l'OCR Tesseract
+    clean_text = text.replace("<", "").replace(">", "").replace("table", "").replace("tr", "").replace("td", "")
+    if len(clean_text.strip()) < 150 and len(doc) > 0:
+        print("[WARNING] PDF scanne detecte. Lancement de l'OCR Tesseract (texte brut)...")
         text = perform_ocr_on_pdf(doc)
-        
+            
     return text
 
 def extract_text_from_docx(file_bytes: bytes) -> str:
     """
-    Extrait le texte brut d'un fichier DOCX à partir de ses octets.
+    Extrait le texte d'un fichier DOCX en le formatant en Markdown 
+    pour préserver la structure (titres, puces, tableaux).
     """
     try:
         doc = Document(io.BytesIO(file_bytes))
-        text = "\n".join([para.text for para in doc.paragraphs])
+        lines = []
         
-        # Extraire aussi le texte des tableaux
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    text += cell.text + "\n"
+        for para in doc.paragraphs:
+            text = para.text.strip()
+            if not text:
+                continue
+                
+            style_name = para.style.name.lower()
+            
+            # Détection des titres pour le Markdown
+            if 'heading 1' in style_name or 'titre 1' in style_name:
+                lines.append(f"\n# {text}")
+            elif 'heading 2' in style_name or 'titre 2' in style_name:
+                lines.append(f"\n## {text}")
+            elif 'heading 3' in style_name or 'titre 3' in style_name:
+                lines.append(f"\n### {text}")
+            # Détection des listes à puces
+            elif 'list' in style_name or 'puce' in style_name:
+                lines.append(f"- {text}")
+            else:
+                lines.append(text)
         
-        return text
+        # Extraction et formatage des tableaux en Markdown
+        if doc.tables:
+            lines.append("\n### Tableaux ou dispositions en colonnes :")
+            for table in doc.tables:
+                lines.append("")
+                for row_idx, row in enumerate(table.rows):
+                    # Remplacer les retours à la ligne dans les cellules par des espaces pour le Markdown
+                    row_data = [cell.text.strip().replace('\n', ' ') for cell in row.cells]
+                    lines.append("| " + " | ".join(row_data) + " |")
+                    
+                    # Ajouter le séparateur markdown après la première ligne
+                    if row_idx == 0:
+                        separator = ["---"] * len(row.cells)
+                        lines.append("| " + " | ".join(separator) + " |")
+                lines.append("")
+        
+        return "\n".join(lines)
     except Exception as e:
         print(f"Erreur lors de l'extraction de texte du DOCX : {e}")
         return ""
@@ -352,7 +425,7 @@ def extract_image_from_docx(file_bytes: bytes) -> bytes:
 # AVEC SCHEMA STRICT (Pydantic)
 # ---------------------------------------------------------
 LOCAL_OLLAMA_URL = "http://localhost:11434/api/chat" 
-MODEL_NAME = "mistral"
+MODEL_NAME = "qwen2.5"
 
 class ProjetExperience(BaseModel):
     titre: str = Field(
@@ -404,6 +477,7 @@ class CVExtraction(BaseModel):
 def extract_cv_data(cv_text: str) -> str:
     import json
     import urllib.request
+    
     print(f"Envoi du CV au modèle {MODEL_NAME} en direct (Format JSON Strict via Pydantic)...")
 
     schema_json = CVExtraction.model_json_schema()
@@ -440,7 +514,7 @@ def extract_cv_data(cv_text: str) -> str:
             return content
     except Exception as e:
         raise Exception(f"Erreur de communication avec Ollama: {e}")
-
+    print(content)
 if __name__ == "__main__":
     import sys
     import os
