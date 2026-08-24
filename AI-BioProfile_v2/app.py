@@ -31,7 +31,7 @@ async def read_home():
 
 @app.get("/app")
 async def read_app():
-    return FileResponse("static/index_v2.html")
+    return FileResponse("static/index.html")
 
 @app.get("/recent")
 async def read_recent():

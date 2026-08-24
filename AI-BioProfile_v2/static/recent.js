@@ -168,7 +168,7 @@ async function deleteProfile(filename, nom) {
 async function openProfile(filename) {
     try {
         // Rediriger vers l'application principale avec le nom du fichier en paramètre
-        window.location.href = `/app?action=edit&file=${encodeURIComponent(filename)}`;
+        window.location.href = `/app#/bioprofiles/${encodeURIComponent(filename)}`;
     } catch (error) {
         console.error('Erreur:', error);
         showToast('Impossible d\'ouvrir le profil', 'error');
