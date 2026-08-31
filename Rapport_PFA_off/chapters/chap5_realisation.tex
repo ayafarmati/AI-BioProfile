@@ -1,0 +1,212 @@
+\chapter{Réalisation et Implémentation technique}
+
+Dans ce chapitre, nous détaillons de manière exhaustive et rigoureuse les défis techniques rencontrés ainsi que les solutions algorithmiques implémentées pour aboutir au pipeline final de l'application \textbf{AI-BioProfile}. Le développement de cette solution n'a pas consisté en un simple assemblage de bibliothèques, mais a nécessité l'ingénierie d'une architecture logicielle complexe. Nous avons dû intégrer et optimiser plusieurs disciplines avancées de l'informatique moderne : l'analyse documentaire bas niveau, la vision par ordinateur, l'inférence locale d'intelligence artificielle générative multimodale (VLM), le développement backend asynchrone pour la scalabilité, et enfin la rétro-ingénierie d'arbres XML complexes.
+
+Cette phase de réalisation a été menée en suivant une méthodologie itérative (proche d'Agile), nous permettant de concevoir des prototypes (Proof of Concept), d'identifier rapidement les impasses technologiques (comme les limites de l'extraction de texte classique), et d'opérer des pivots architecturaux décisifs.
+
+\section{Module 1 : Le Moteur d'Ingestion et de Traitement Documentaire}
+
+La première brique fondamentale de notre pipeline consiste à ingérer un document brut (le Curriculum Vitae du candidat) et à le préparer mathématiquement pour l'analyse sémantique. Les CV reçus par les recruteurs de SEGULA Technologies proviennent de sources extrêmement diverses et ne respectent absolument aucun standard de mise en page. 
+
+\subsection{Problématique des formats et choix de l'analyseur PDF}
+Un fichier PDF n'est pas conçu pour stocker du texte structuré, mais pour garantir une restitution visuelle fidèle à l'impression, quelles que soient la machine et la police installée. Techniquement, un PDF place des caractères isolés ou des blocs de glyphes à des coordonnées précises (X, Y) sur une page blanche. 
+Pour extraire ces informations, nous avons sélectionné la bibliothèque \texttt{PyMuPDF} (aussi connue sous le nom de \texttt{fitz}). Écrite en C++, elle offre une vitesse d'exécution inégalée et permet non seulement d'extraire le texte, mais surtout d'interagir avec les structures de données sous-jacentes du PDF : les images embarquées (XObjects) et les polices vectorielles.
+
+Lorsque l'utilisateur soumet un document (via une requête multipart/form-data), le système l'enregistre temporairement. S'il s'agit d'un fichier Microsoft Word (\texttt{.docx}), nous utilisons une bibliothèque dédiée pour extraire les paragraphes XML. S'il s'agit d'un PDF, le document est chargé en mémoire vive.
+
+\subsection{Extraction de la photo de profil : Une double heuristique}
+L'un des défis majeurs a été l'extraction automatisée et isolée de la photo de profil du candidat, un élément indispensable pour la génération de la présentation commerciale (BioProfile) finale. Les CV modernes sont extrêmement graphiques : ils contiennent de multiples éléments visuels tels que des logos d'entreprises, des icônes de réseaux sociaux (LinkedIn, GitHub), des images de fond ou des séparateurs graphiques.
+
+Pour résoudre ce problème de manière totalement robuste et déterministe, nous avons développé un algorithme de filtrage hybride, implémenté sous forme d'un pipeline de scoring :
+
+\subsubsection{Phase 1 : L'approche Heuristique par Scoring Matriciel}
+Dans un premier temps, l'algorithme parcourt les métadonnées du PDF pour extraire toutes les images (objets pixellisés) encapsulées. Pour chaque image $i$ extraite, le système calcule un score de confiance $S(i)$ basé sur trois composantes mathématiques :
+
+\begin{itemize}
+    \item \textbf{Le ratio d'aspect (Forme) :} Les photos d'identité ou de profil respectent des normes universelles : elles sont généralement carrées ou légèrement rectangulaires (format portrait). Soit $W$ la largeur et $H$ la hauteur de l'image en pixels. Nous calculons le ratio $R = W / H$. Si $R$ est compris entre 0.7 et 1.2, l'image reçoit un bonus. Si $R > 2.0$ (ce qui correspond souvent à un bandeau ou une ligne de séparation), l'image est pénalisée ou exclue.
+    \item \textbf{La taille surfacique (Résolution) :} Les icônes ont une surface très faible (souvent inférieure à 50x50 pixels), tandis que les images de fond couvrent des millions de pixels. Soit $A = W \times H$ l'aire de l'image. Nous appliquons une fonction de filtre passe-bande retenant les images dont l'aire correspond à la taille standard d'une photo (entre 10 000 et 400 000 pixels carrés).
+    \item \textbf{La position spatiale :} Sur un CV conventionnel, la photo est presque systématiquement positionnée dans le tiers supérieur de la première page. \texttt{PyMuPDF} nous fournit les coordonnées (Bounding Box) de l'image. Si la coordonnée Y se trouve dans la zone supérieure (Top 30\%), le score est augmenté.
+\end{itemize}
+
+L'image qui obtient le score final le plus élevé est retenue, sous condition que ce score dépasse un seuil paramétré empiriquement.
+
+\subsubsection{Phase 2 : Le Fallback par Computer Vision (OpenCV)}
+Bien que très performante, l'approche heuristique échoue inévitablement dans un cas précis : lorsque le document soumis est un scan complet. Dans cette situation, le fichier PDF ne contient pas de multiples images, mais une seule grande image (la page entière numérisée). Les métadonnées ne nous sont d'aucune utilité.
+
+Pour pallier cette limitation critique, nous avons intégré un système de secours (Fallback) utilisant l'intelligence artificielle spécialisée dans la vision par ordinateur, grâce à la bibliothèque \textbf{OpenCV}. L'algorithme se déroule comme suit :
+\begin{enumerate}
+    \item L'image complète du scan est chargée sous forme de matrice NumPy et convertie en niveaux de gris pour accélérer le traitement.
+    \item Nous appliquons un algorithme basé sur la méthode de Viola-Jones, en utilisant un classificateur \texttt{Haar Cascade} pré-entraîné (\texttt{haarcascade\_frontalface\_default.xml}).
+    \item Les hyperparamètres sont strictement définis (par exemple, \texttt{scaleFactor=1.1} et \texttt{minNeighbors=5}) pour limiter les faux positifs.
+    \item Lorsque l'algorithme détecte un visage, il renvoie les coordonnées du carré strict l'entourant. Étant donné qu'une photo de profil professionnelle inclut généralement les épaules et le cou, notre algorithme applique un calcul de marge ("Padding") de +30\% sur les bords extérieurs, afin de recadrer l'image intelligemment avant de l'enregistrer.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \vspace{8cm} % Espace pour insérer le screenshot
+    \caption{Extraction de photo : (Gauche) Échec de l'heuristique sur un scan, (Droite) Recadrage réussi par détection faciale OpenCV.}
+    \label{fig:photo_extraction}
+\end{figure}
+
+
+\section{Module 2 : Le Moteur Sémantique et la Transition vers le Multimodal}
+
+Le cœur de la valeur ajoutée de l'application réside dans sa capacité à comprendre le contenu textuel et sémantique du CV. C'est ici que l'intelligence artificielle générative entre en jeu. Durant la phase de conception, cette brique architecturale a fait l'objet d'un pivot majeur.
+
+\subsection{La première itération : L'approche LLM Textuelle Classique}
+Initialement, nous avons conçu un pipeline d'extraction séquentiel. Le texte du CV était extrait de manière linéaire (de haut en bas, de gauche à droite) via PyMuPDF. Si le document était un scan, nous utilisions Tesseract OCR pour reconstruire le texte. Le résultat consistait en une très longue chaîne de caractères non formatée, souvent truffée de sauts de lignes illogiques.
+
+Cette chaîne était ensuite injectée dans le contexte ("Prompt") d'un Grand Modèle de Langage (LLM), exécuté localement (pour des raisons de confidentialité) avec le moteur \texttt{Ollama} et le modèle \textit{Mistral}. 
+L'instruction donnée à l'IA était : "Analyse le texte de ce CV et retourne les expériences et compétences au format JSON".
+
+\subsubsection{Les limites de l'extraction linéaire}
+Après avoir testé ce premier prototype sur un échantillon de 50 CV réels de consultants SEGULA, les résultats se sont avérés insuffisants, en particulier sur les CV d'ingénieurs (très denses et souvent mis en page avec Canva). Nous avons identifié deux écueils bloquants :
+
+\begin{itemize}
+    \item \textbf{La perte d'intégrité spatiale (Problème du Multi-colonnes) :} Lorsqu'un algorithme classique lit un PDF divisé en deux colonnes, il lit géométriquement la ligne horizontale. Par exemple, si la colonne de gauche indique la date "2021-2023" et que la colonne de droite indique "Compétence : Python", le texte extrait sera "2021-2023 Compétence : Python". Le LLM, recevant ce texte fusionné, était incapable de reconstituer la logique temporelle des expériences du candidat, associant des entreprises aux mauvaises dates.
+    \item \textbf{La destruction de l'information graphique (Problème des Jauges) :} De plus en plus de candidats évaluent leurs compétences à travers des jauges visuelles (par exemple, 4 barres pleines sur 5 pour indiquer un niveau de maîtrise avancé en Java). L'extracteur de texte ne voyant que des pixels vectoriels, il ignorait ces jauges. Le LLM recevait le mot "Java" sans aucune indication de niveau, provoquant une immense perte d'information.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \vspace{7cm} % Espace pour insérer le screenshot
+    \caption{Console de débogage montrant la destruction de la logique d'un texte multi-colonnes lors du parsing linéaire.}
+    \label{fig:llm_failure}
+\end{figure}
+
+
+\subsection{La seconde itération : L'approche Vision-Language Model (VLM)}
+Face à cette impasse, il est apparu évident que la perte d'informations se situait à la racine de la chaîne : la traduction d'un document 2D en texte 1D. Nous avons donc décidé de faire évoluer l'architecture en intégrant un VLM (Modèle Multimodal), capable d'interpréter simultanément le langage et l'image.
+
+\subsubsection{L'implémentation de l'encodeur Base64}
+Au lieu d'extraire uniquement le texte, notre nouveau script (\texttt{extraction\_lmstudio.py}) génère un rendu photographique (Rasterization) de chaque page du PDF. Afin d'éviter de saturer la mémoire du serveur d'inférence (VRAM), les images sont redimensionnées tout en conservant une résolution suffisante pour la lecture du texte, puis encodées en chaînes de caractères \texttt{Base64}.
+
+Lors de l'appel à l'API du modèle (utilisant une compatibilité avec l'API OpenAI), nous transmettons un objet complexe (Array) comprenant à la fois le texte brut (en tant que "Filet de sécurité" ou "Hint") et les images encodées représentant le document dans son aspect d'origine.
+
+\subsubsection{Les bénéfices immédiats du VLM}
+Le modèle VLM analyse la requête de manière spatiale. Il "regarde" le document comme le ferait un recruteur humain. Il repère visuellement la séparation des colonnes, il associe graphiquement une date à un bloc de texte en étudiant les marges, et il interprète parfaitement les jauges de compétences en comptant visuellement les "étoiles" ou "barres" pour les traduire en niveaux de séniorité. Ce pivot technologique a transformé notre outil d'un simple parseur expérimental en une solution de production robuste, élevant le taux de réussite d'extraction sur des CV complexes à un niveau quasi parfait.
+
+\begin{figure}[H]
+    \centering
+    \vspace{7cm} % Espace pour insérer le screenshot
+    \caption{Requête envoyée au serveur LM Studio montrant le Payload mixte (Texte + Base64), permettant au VLM d'extraire parfaitement les jauges de niveau.}
+    \label{fig:vlm_success}
+\end{figure}
+
+\subsection{La Garantie de Structure : Pydantic et le JSON Schema}
+Le défi suivant concernait la robustesse de l'intégration logicielle. Un VLM reste une intelligence générative, qui tend naturellement à produire de la prose. Si le modèle génère une introduction comme \textit{"Voici le profil analysé : \{"Nom": "..."\}"}, la tentative du backend de parser ce résultat avec la fonction \texttt{json.loads()} provoquera une exception bloquante, faisant s'effondrer l'application.
+
+L'ingénierie de prompt ("Réponds strictement en format JSON") est trop aléatoire pour une mise en production (taux de succès de 80\%). Pour garantir un taux de réussite de 100\%, nous avons implémenté la contrainte de \textbf{Structured Output} (Sortie Structurée).
+
+Nous avons exploité la bibliothèque \textbf{Pydantic}. Le développeur définit des classes de modèles de données en Python, par exemple :
+
+\begin{verbatim}
+class ProjetExperience(BaseModel):
+    titre: str
+    entreprise: str
+    date_debut: str
+    date_fin: str
+    description: str
+
+class CVExtraction(BaseModel):
+    nom_complet: str
+    titre_professionnel: str
+    experiences: List[ProjetExperience]
+\end{verbatim}
+
+Notre backend convertit automatiquement cette hiérarchie de classes en un Schéma JSON (JSON Schema) strict, qui est ensuite transmis au modèle IA via l'argument \texttt{response\_format}. Au moment de l'inférence, le serveur bride la prédiction des tokens : le modèle est mathématiquement contraint de ne générer que des caractères qui valident ce schéma. Finies les hallucinations syntaxiques, le backend reçoit systématiquement un objet exploitable.
+
+
+\section{Module 3 : L'Orchestration Backend (FastAPI)}
+
+L'ensemble de ces modules devait être rendu accessible via un serveur web de haute performance. Nous avons développé le cœur du système (\texttt{app.py}) avec le framework \textbf{FastAPI}.
+
+\subsection{Architecture et Asynchronisme (Event Loop)}
+Dans une application Python classique (WSGI), chaque requête HTTP monopolise un fil d'exécution (Thread). Si l'inférence locale d'un CV prend 20 secondes, une dizaine d'utilisateurs simultanés suffirait à bloquer totalement le serveur (Time-out). 
+L'avantage critique de FastAPI est sa fondation sur l'ASGI (Asynchronous Server Gateway Interface) et la boucle d'événements (\textit{Event Loop}) de \texttt{asyncio}. Lors de l'appel réseau vers l'API de LM Studio pour analyser un CV, le code utilise le mot-clé \texttt{await}. Le serveur met en pause la tâche courante sans bloquer le processus, libérant ainsi des ressources pour servir l'interface web (fichiers statiques, CSS) à de nouveaux utilisateurs de manière instantanée.
+
+\subsection{Le Traitement par Lots (Batch Processing) et la Gestion Mémoire}
+Durant l'analyse des besoins, il est apparu que les recruteurs traitaient souvent des CV par vagues (arrivage d'une dizaine de candidatures). Exiger de l'utilisateur qu'il téléverse et attende la résolution d'un CV à la fois était inacceptable d'un point de vue expérience utilisateur (UX).
+
+Nous avons développé une architecture de \textit{Batch Processing} extrêmement élaborée. Lorsqu'un utilisateur téléverse de multiples CV, l'API répond immédiatement en fournissant un \texttt{job\_id} et renvoie la tâche en arrière-plan à l'aide du composant \texttt{BackgroundTasks} de FastAPI.
+
+Le danger principal du traitement de masse résidait dans l'épuisement des ressources. Lancer simultanément 10 instances d'analyse sur le VLM sature instantanément la mémoire vidéo (VRAM) du GPU ou la RAM du serveur, provoquant un arrêt critique (OOM - Out Of Memory). 
+Pour contrôler cela, nous avons implémenté un \textbf{ThreadPoolExecutor}. Ce pool limite le nombre maximum de traitements simultanés (les \textit{workers}) à une valeur sécurisée (ex: 1). Le système place les CV restants dans une file d'attente (Queue) et les traite séquentiellement. Le Front-end interroge périodiquement (Polling) une route \texttt{/api/batch-status/\{job\_id\}} pour mettre à jour les barres de progression individuelles sur le navigateur de l'utilisateur.
+
+\begin{figure}[H]
+    \centering
+    \vspace{7cm} % Espace pour insérer le screenshot
+    \caption{Interface de suivi d'avancement des tâches : le Batch Processing gère efficacement la file d'attente sans saturation.}
+    \label{fig:batch_processing}
+\end{figure}
+
+\subsection{Gestion des Fichiers et Extraction de Templates}
+La flexibilité était un critère clé. L'entreprise utilise plusieurs modèles PowerPoint selon les secteurs ou les niveaux de confidentialité exigés par les clients finaux.
+
+Nous avons intégré un gestionnaire complet permettant l'upload et la suppression de \textit{Templates} (\texttt{.pptx}). Le défi était de présenter une interface graphique attrayante sans demander à l'utilisateur de fournir une image de couverture pour chaque modèle. 
+La solution technique a consisté à réaliser que le standard Office Open XML (fichiers \texttt{.docx}, \texttt{.pptx}) n'est en réalité qu'une archive ZIP contenant des dizaines de fichiers XML et médias. Dans notre backend, lorsqu'un utilisateur dépose un modèle, le serveur Python utilise la bibliothèque \texttt{zipfile} pour ouvrir l'archive en mémoire, navigue jusqu'au chemin virtuel \texttt{docProps/thumbnail.jpeg} généré par Microsoft Office, extrait l'image binaire, et la sauvegarde en tant que miniature.
+
+\begin{figure}[H]
+    \centering
+    \vspace{7cm} % Espace pour insérer le screenshot
+    \caption{Le gestionnaire de modèles (Templates) extrait dynamiquement les miniatures depuis les archives ZIP des fichiers PPTX.}
+    \label{fig:template_gallery}
+\end{figure}
+
+
+\section{Module 4 : Le Moteur de Génération Documentaire (Manipulation XML)}
+
+La finalité de l'application est de délivrer un BioProfile (fichier \texttt{.pptx}) impeccable. Bien que Python propose la bibliothèque \texttt{python-pptx} pour automatiser PowerPoint, l'utiliser de manière naïve aurait conduit à l'échec esthétique du projet.
+
+\subsection{Le problème de l'écrasement des styles (Formatage)}
+L'approche de base consiste à rechercher une forme (Shape) contenant un texte fictif, et à y assigner la valeur générée par l'IA (ex: \texttt{shape.text = nom\_extrait}). 
+Cependant, faire cela écrase instantanément le formatage natif. Le texte devient noir, en taille par défaut (souvent Arial 18), et pire encore, si le modèle de l'entreprise incluait des puces spécifiques (Bullet points avec le logo de l'entreprise), celles-ci disparaissent. 
+
+\subsection{La rétro-ingénierie par Deep Copy (Copie Profonde) XML}
+Pour injecter une liste de compétences extraite par l'IA tout en respectant au pixel près la charte graphique de SEGULA Technologies, nous avons manipulé directement l'arbre DOM (Document Object Model) des éléments XML sous-jacents.
+
+Dans la spécification OpenXML, un paragraphe est encadré par la balise \texttt{<a:p>}. Les propriétés stylistiques globales du paragraphe (espacement, alignement, style de puce) sont définies dans un enfant \texttt{<a:pPr>}. Le texte lui-même, appelé "Run", est défini dans \texttt{<a:r>}, et ses propriétés (taille de police, gras, couleur RGB) résident dans \texttt{<a:rPr>}.
+
+Le modèle d'origine fourni par les designers ne contient qu'une seule ligne d'exemple (un seul \texttt{<a:p>}). Pour ajouter une nouvelle compétence, notre algorithme accède à l'élément parent, génère un nouveau nœud XML \texttt{<a:p>}, et y instancie un nœud texte avec la valeur de l'IA. La magie opère ensuite : le script utilise la fonction \texttt{copy.deepcopy()} de la bibliothèque standard Python pour réaliser un clonage profond de l'objet XML \texttt{<a:pPr>} du modèle d'origine, et l'injecte dans notre nouveau paragraphe. 
+Cette duplication profonde de l'arbre assure que le moteur de rendu de PowerPoint appliquera l'exacte même puce vectorielle, la même marge, et la même police à notre ligne générée dynamiquement.
+
+\begin{figure}[H]
+    \centering
+    \vspace{7cm} % Espace pour insérer le screenshot
+    \caption{Résultat du clonage XML profond : injection dynamique d'une liste sans aucune perte de charte graphique.}
+    \label{fig:xml_deep_copy}
+\end{figure}
+
+\subsection{L'algorithme de gestion de débordement (Auto-sizing)}
+Un problème inhérent à l'IA générative est la variabilité imprévisible de la longueur du texte produit. Lors de l'injection d'un titre (par exemple "Consultant Sénior en Architecture Cloud et DevOps"), le texte débordait visuellement du cadre (Bounding Box) prévu par les designers, rendant la diapositive inexploitable commercialement. 
+
+La fonction "Ajustement automatique" native de PowerPoint n'est déclenchée que lorsque l'utilisateur modifie le texte à la main, elle est inactive lors d'une génération programmatique.
+Nous avons résolu ce problème en créant un algorithme mathématique d'Auto-Sizing. 
+L'algorithme évalue la longueur de la chaîne de caractères. Au-delà d'un seuil critique (calculé selon la largeur en centimètres de la zone de texte), l'algorithme calcule un coefficient de réduction linéaire. Il plonge alors dans l'arbre XML, trouve l'attribut \texttt{sz} (Size) de la balise \texttt{<a:rPr>} (dont la valeur est exprimée en centièmes de points typographiques), et la multiplie par le coefficient. Ainsi, un titre trop long sera dynamiquement réduit d'une police 24 à une police 18 pour s'insérer parfaitement dans le design.
+
+
+\section{Module 5 : Interface et Validation "Human-in-the-Loop"}
+
+Dans un contexte de ressources humaines B2B (Business-to-Business), envoyer à un client un profil contenant une hallucination de l'IA est inacceptable. C'est pourquoi nous avons exclu l'idée d'un pipeline 100\% autonome ("Black Box"). Nous avons placé l'humain au centre de l'application, selon le principe du \textbf{Human-in-the-Loop}.
+
+\subsection{Architecture de l'Interface Utilisateur (Front-end)}
+L'interface web, conçue en technologies modernes (HTML5, CSS Vanilla et Fetch API JavaScript), sert de poste de contrôle au recruteur.
+L'écran principal se scinde en deux sections synchronisées :
+\begin{itemize}
+    \item \textbf{Visionneuse (À gauche) :} Un composant \texttt{iframe} sécurisé affiche le document original du candidat. Cela permet à l'opérateur de toujours avoir la source d'information originale sous les yeux, éliminant le besoin de jongler entre plusieurs applications.
+    \item \textbf{Formulaire Dynamique (À droite) :} Les données renvoyées par le moteur IA (après conversion JSON) peuplent automatiquement un formulaire modulaire. L'utilisateur peut y corriger un nom, retoucher une expérience ou ajuster le niveau de langue. Des panneaux gérés par JavaScript permettent d'ajouter, de supprimer, ou de réorganiser l'ordre des projets d'un simple glisser-déposer (Drag and Drop), modifiant le DOM (Document Object Model) localement.
+\end{itemize}
+
+Ce n'est qu'une fois la validation humaine explicite effectuée via le bouton de génération que l'état modifié du formulaire est sérialisé en JSON et renvoyé au serveur Backend pour la phase de manipulation XML décrite précédemment.
+Cette stratégie a permis de rassurer les utilisateurs métier, garantissant l'adoption rapide de l'outil en les plaçant en tant que superviseurs augmentés, et non en tant que spectateurs passifs.
+
+\begin{figure}[H]
+    \centering
+    \vspace{7.5cm} % Espace pour insérer le screenshot
+    \caption{L'interface de validation "Human-in-the-Loop" : l'humain vérifie, ajuste et valide le travail de la machine avant la création du PowerPoint.}
+    \label{fig:human_validation_ui}
+\end{figure}
+
+
+\section{Conclusion du chapitre}
+La phase de réalisation de l'application AI-BioProfile a nécessité la résolution de nombreux défis technologiques majeurs. Le passage crucial d'une extraction linéaire par LLM à une analyse multimodale par VLM a représenté un point de bascule permettant d'atteindre la fiabilité requise par l'entreprise. L'ingénierie backend, via la gestion asynchrone des flux (FastAPI) et la limitation de la concurrence, a assuré la scalabilité du produit face à la volumétrie métier. Enfin, l'audace technique consistant à manipuler directement les structures profondes du format XML a garanti le respect inconditionnel de la charte graphique corporative. Les choix d'architecture réalisés font d'AI-BioProfile un outil robuste, sécurisé et taillé pour la production.

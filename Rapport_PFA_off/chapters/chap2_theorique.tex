@@ -1,0 +1,66 @@
+\chapter{Cadre théorique}
+
+Dans ce chapitre, nous approfondissons l'étude de la digitalisation des processus de recrutement, et plus particulièrement l'intégration de l'Intelligence Artificielle dans la gestion des talents. Nous débutons par une définition des concepts de traitement automatique des candidatures et analysons les mécanismes qui régissent la transformation d'un Curriculum Vitae brut en un document commercial exploitable. Nous introduisons ensuite l'application AI-BioProfile, conçue pour enrichir l'écosystème des Ressources Humaines (RH) et des Entreprises de Services du Numérique (ESN) en automatisant les tâches administratives chronophages. Les sections suivantes détaillent la raison d'être de cette solution, articulant sa mission, sa vision, et l'effet escompté sur la productivité des équipes. Le chapitre conclut avec une exploration des différents utilisateurs de l'application, incluant les chargés de recrutement, les ingénieurs d'affaires et les candidats, en examinant leurs interactions au sein de ce processus dynamique.
+
+\section{L'Intelligence Artificielle au service du recrutement}
+
+\subsection{La transformation digitale des Ressources Humaines}
+Le secteur du recrutement connaît aujourd'hui une mutation profonde tirée par la transformation digitale. Face à un volume de candidatures toujours plus important et à une concurrence accrue pour attirer les meilleurs talents, les entreprises cherchent à optimiser leurs processus. L'Intelligence Artificielle (IA) s'impose comme une réponse efficace pour traiter de grandes quantités de données non structurées (comme les documents textuels ou les images scannées), permettant ainsi aux professionnels des ressources humaines de se concentrer sur l'humain plutôt que sur la saisie administrative.
+
+\subsection{Le traitement automatique des CV (Resume Parsing)}
+Le traitement automatique de CV, ou \textit{Resume Parsing}, est une technologie qui permet de lire, d'analyser et d'extraire intelligemment les informations clés contenues dans un Curriculum Vitae (données de contact, expériences, compétences, diplômes). Cette automatisation s'appuie sur des technologies avancées de traitement du langage naturel (NLP) et de reconnaissance optique de caractères (OCR). Si le candidat rédige son CV dans un format libre (PDF, Word, Image), l'objectif du "parsing" est d'uniformiser ces données pour les rendre exploitables, consultables et formatables selon les standards de l'entreprise recruteuse.
+
+
+\section{L'application AI-BioProfile}
+
+\subsection{À propos d'AI-BioProfile}
+La gestion des dossiers de présentation des consultants est souvent perçue comme une tâche rébarbative et chronophage au sein des cabinets de conseil et des ESN. C'est de ce constat qu'est née l'initiative AI-BioProfile.
+
+Nous avons l'intime conviction que les équipes de recrutement et les ingénieurs d'affaires, lorsqu'ils sont libérés de la charge de la mise en forme documentaire, peuvent allouer un temps précieux à l'accompagnement des candidats et à la satisfaction des exigences clients.
+
+Nous avons mis en commun notre expertise technique pour concevoir un outil ambitieux qui redonne le pouvoir aux recruteurs, en transformant instantanément n'importe quel profil en une présentation percutante.
+
+\textbf{Mission :} Autonomiser les acteurs du recrutement et les commerciaux en leur fournissant une plateforme intelligente capable d'extraire, de structurer et de générer automatiquement des dossiers de compétences (BioProfiles) standardisés à partir de CV hétérogènes.
+
+\textbf{Vision :} Notre vision est de créer un écosystème de recrutement fluide, où les barrières administratives disparaissent grâce à l'automatisation locale et sécurisée. Nous entrevoyons un environnement de travail où les talents sont présentés aux clients finaux de manière rapide, homogène et professionnelle, accélérant ainsi la mise en relation entre les compétences et les opportunités d'affaires.
+
+\subsection{Le concept du "Dossier de Compétences" (BioProfile)}
+Dans le domaine des services numériques, le client final ne reçoit que très rarement le CV original du candidat. Il reçoit un "Dossier de Compétences" (ou BioProfile). Il s'agit d'un document anonymisé ou semi-anonymisé, reprenant la charte graphique de l'entreprise qui propose le candidat, et qui met en valeur ses compétences techniques (Hard Skills), comportementales (Soft Skills) et ses expériences de manière uniforme. AI-BioProfile a pour but de générer ce livrable final (au format PowerPoint) de façon entièrement automatisée.
+
+
+\section{Les utilisateurs de l'application}
+
+Dans le contexte de l'application AI-BioProfile, le diagramme de cas d'utilisation illustré dans la figure 2.1  met en évidence les interactions entre les différents types d'utilisateurs et les fonctionnalités du système.
+
+\textit{(Vous pouvez insérer ici un diagramme de cas d'utilisation UML - Figure 2.1)}
+
+\subsection{Le Chargé de Recrutement (RH)}
+Il est l'utilisateur principal du système en back-office. Son rôle est de sourcer les meilleurs profils et de préparer leurs dossiers :
+\begin{itemize}
+    \item \textbf{Importer des documents :} Il charge les CV originaux des candidats (formats PDF, Word, texte) sur la plateforme.
+    \item \textbf{Vérifier et ajuster les données :} Il relit les informations extraites par l'IA (présentées sur l'interface) et peut y apporter des modifications manuelles si nécessaire avant validation.
+    \item \textbf{Générer le BioProfile :} Il déclenche la création du document de présentation final.
+\end{itemize}
+
+\subsection{L'Ingénieur d'Affaires (Commercial)}
+Son rôle est de faire le pont entre les profils recrutés et les besoins des clients de l'entreprise :
+\begin{itemize}
+    \item \textbf{Exploiter le BioProfile :} Il télécharge les présentations PowerPoint générées par l'outil pour les intégrer dans ses propositions commerciales.
+    \item \textbf{Proposer des profils :} Grâce au formatage standardisé, il peut présenter rapidement et professionnellement les candidats aux clients finaux, augmentant ainsi les chances de placement.
+\end{itemize}
+
+\subsection{Le Candidat}
+Bien qu'il n'interagisse pas directement avec le code de la plateforme, il est à la source de la donnée :
+\begin{itemize}
+    \item \textbf{Fournir le contenu :} Il soumet son Curriculum Vitae original, quels que soient sa forme et son style de présentation, qui servira de matière première au moteur d'intelligence artificielle.
+\end{itemize}
+
+\subsection{Le Client Final}
+Il est le destinataire de la valeur générée par le système :
+\begin{itemize}
+    \item \textbf{Consulter les profils :} Il reçoit et lit le BioProfile finalisé, clair, structuré et visuellement agréable, ce qui facilite sa prise de décision quant à l'acceptation d'un consultant sur son projet.
+\end{itemize}
+
+
+\section{Conclusion}
+Ce chapitre a présenté le cadre théorique du stage. L'étude sur la transformation digitale des ressources humaines a mis en lumière l'importance de l'automatisation dans le traitement des candidatures. L'application AI-BioProfile se distingue par son approche intégrée, offrant à la fois un gain de temps considérable et une standardisation documentaire irréprochable. Nous avons exploré la mission de l'outil, sa vision future, et l'impact attendu sur le processus de placement des consultants. L'analyse des différents utilisateurs du système a montré que chaque acteur, du candidat au client final, bénéficie directement ou indirectement de cette chaîne de valeur optimisée, soulignant le rôle essentiel d'AI-BioProfile dans l'écosystème de l'entreprise.

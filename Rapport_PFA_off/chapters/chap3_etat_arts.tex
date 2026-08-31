@@ -1,0 +1,76 @@
+
+\chapter{État de l'art}
+
+Dans ce chapitre, nous explorons les diverses technologies et méthodologies qui forment le socle des systèmes d'information modernes orientés vers l'intelligence artificielle et l'automatisation documentaire. L'accent est mis sur des concepts fondamentaux tels que le Traitement du Langage Naturel (NLP), les Grands Modèles de Langage (LLM), la Vision par Ordinateur (Computer Vision), la Reconnaissance Optique de Caractères (OCR), ainsi que sur les architectures d'API modernes. Ces technologies jouent un rôle crucial dans la capacité des entreprises à traiter massivement des données non structurées (comme les CV) pour les transformer en informations structurées et exploitables. Chaque section détaille une technologie spécifique, expliquant son fonctionnement, ses applications et son importance dans le développement d'outils d'automatisation. Ce cadre théorique est essentiel pour comprendre les briques technologiques qui ont permis la conception de l'application AI-BioProfile.
+
+\section{Intelligence Artificielle et Modèles de Langage (LLMs)}
+
+\subsection{Le Traitement du Langage Naturel (NLP)}
+Le Traitement du Langage Naturel (en anglais NLP pour \textit{Natural Language Processing}) est une branche de l'intelligence artificielle qui vise à donner aux ordinateurs la capacité de comprendre, d'interpréter et de générer le langage humain de manière significative et utile. Dans le domaine des ressources humaines, le NLP est la technologie fondamentale derrière le "Resume Parsing" (analyse de CV).
+
+Historiquement basé sur des règles statistiques complexes et des expressions régulières (Regex), le NLP moderne s'appuie désormais sur des réseaux de neurones profonds. Il permet d'identifier l'intention d'un texte, d'en extraire les entités nommées (NER - \textit{Named Entity Recognition} : identifier une entreprise, un poste, une école) et d'établir des relations sémantiques entre les mots, peu importe la façon dont le candidat a rédigé son document.
+
+\subsection{Les Grands Modèles de Langage (LLMs)}
+Un Grand Modèle de Langage (LLM - \textit{Large Language Model}) est un système d'intelligence artificielle entraîné sur des quantités massives de textes (souvent l'intégralité du web public). Grâce à l'architecture \textit{Transformer}, introduite en 2017, ces modèles ont acquis une capacité exceptionnelle à comprendre le contexte et à générer du texte cohérent (ex: GPT, BERT, Llama, Mistral).
+
+Dans le cadre d'un système d'extraction de données, un LLM ne se contente pas de chercher des mots-clés ; il comprend la structure d'une phrase. Par exemple, il sait différencier "J'ai développé un outil en Python" (compétence acquise) de "J'aimerais apprendre Python" (souhait futur).
+
+\textbf{Inférence Cloud vs Inférence Locale (On-Premise)}
+Actuellement, l'utilisation des LLMs se divise en deux grandes approches :
+\begin{itemize}
+    \item \textbf{Les solutions Cloud (ex: API OpenAI) :} Elles offrent des modèles extrêmement puissants mais nécessitent d'envoyer les données sur des serveurs distants, ce qui pose de graves problèmes de confidentialité (RGPD), particulièrement pour des données sensibles comme des CV.
+    \item \textbf{L'inférence locale (ex: Ollama, Mistral) :} Elle permet d'exécuter des modèles de langage puissants et open-source directement sur les serveurs ou les machines de l'entreprise. Cette méthode garantit une souveraineté totale des données, l'information ne quittant jamais le réseau local. C'est un prérequis de plus en plus exigé par les entreprises travaillant avec des données personnelles.
+\end{itemize}
+
+\subsection{Le Prompt Engineering et la structuration des données}
+Le \textit{Prompt Engineering} (ou ingénierie de requête) est la discipline qui consiste à concevoir et optimiser les instructions envoyées à un LLM pour obtenir le résultat le plus précis possible. Dans les applications métier, on demande souvent au LLM de ne pas répondre par une simple phrase, mais de générer une structure de données stricte (comme le format JSON) pour qu'elle soit exploitable par le reste du code. 
+
+L'utilisation d'outils de validation de schémas (tels que \textit{Pydantic} en Python) permet de forcer le modèle d'IA à respecter des types de données stricts (exiger qu'une date soit au format JJ/MM/AAAA ou qu'une liste de compétences soit sous forme de tableau), garantissant ainsi la stabilité de l'application logicielle qui dépend de cette IA.
+
+
+\section{Vision par Ordinateur et Traitement Documentaire}
+
+Outre le texte, les documents professionnels comme les CV contiennent souvent des éléments graphiques. La Vision par Ordinateur (\textit{Computer Vision}) est le domaine de l'IA qui permet aux machines "d'ordonner" et de comprendre des images.
+
+\subsection{La Reconnaissance Optique de Caractères (OCR)}
+La Reconnaissance Optique de Caractères (OCR) est une technologie permettant de convertir différents types de documents (scans, fichiers PDF non natifs, images capturées par un appareil photo) en données textuelles modifiables et interrogeables. 
+
+Lorsqu'un candidat soumet un CV qui a été scanné ou qui est une simple image, les parseurs de texte classiques sont incapables de lire son contenu. L'OCR (comme le moteur \textit{Tesseract}, soutenu par Google) intervient en analysant les pixels de l'image pour y détecter des formes correspondant à des lettres, puis reconstitue les mots et les phrases. L'intégration de l'OCR est une étape de prétraitement vitale pour assurer que le système ne rejette aucun document sous prétexte de son format.
+
+\subsection{La détection faciale (Facial Detection)}
+La détection faciale est une technologie de vision par ordinateur qui permet d'identifier la présence et l'emplacement de visages humains dans des images numériques. Contrairement à la reconnaissance faciale (qui identifie "qui" est la personne), la détection faciale se contente de trouver un visage.
+
+Dans le contexte du traitement de CV, cette technologie (souvent implémentée via des bibliothèques comme \textit{OpenCV} utilisant les classificateurs en cascade de Haar ou des réseaux de neurones) permet de parcourir un document PDF, de repérer automatiquement la photo de profil du candidat, de la recadrer et de l'isoler afin de l'insérer plus tard dans le dossier de compétences généré.
+
+\subsection{Le parsing de documents complexes (PDF, DOCX)}
+L'extraction de données passe par des bibliothèques logicielles capables de disséquer des formats propriétaires complexes :
+\begin{itemize}
+    \item \textbf{Le format PDF :} Considéré comme le standard d'affichage, c'est l'un des formats les plus difficiles à analyser car il ne structure pas sémantiquement l'information (il positionne des caractères sur des coordonnées X et Y). L'utilisation d'outils d'extraction (comme \textit{PyMuPDF}) permet de reconstruire les blocs de texte et de récupérer les objets graphiques intégrés au document.
+    \item \textbf{Le format DOCX (Word) :} Basé sur des archives XML, il demande un traitement différent pour parser les paragraphes, les tableaux et extraire les médias (fichiers images stockés dans l'archive).
+\end{itemize}
+
+
+\section{Architecture Web et Génération Documentaire}
+
+\subsection{Les API RESTful et le framework FastAPI}
+Une API (Interface de Programmation d'Application) RESTful est une architecture standardisée permettant à différents systèmes informatiques de communiquer entre eux via le protocole HTTP. Dans le cadre des systèmes d'intelligence artificielle, l'API sert de pont entre l'interface utilisateur (Front-end) et les lourds traitements algorithmiques (Back-end).
+
+\textit{FastAPI} est un framework web moderne et très performant développé en Python. Il est particulièrement plébiscité dans les projets liés à la Data Science et à l'IA pour plusieurs raisons :
+\begin{itemize}
+    \item \textbf{Asynchronisme :} Il gère de manière native la programmation asynchrone, ce qui est indispensable lors des appels à des modèles d'IA qui peuvent prendre plusieurs secondes à répondre, évitant ainsi le blocage du serveur.
+    \item \textbf{Validation automatique :} En lien avec la structuration des données (Pydantic), il valide automatiquement les requêtes entrantes et sortantes, réduisant considérablement les erreurs de traitement.
+    \item \textbf{Performance :} Conçu pour être l'un des frameworks Python les plus rapides, il rivalise avec des technologies basées sur NodeJS ou Go.
+\end{itemize}
+
+\subsection{La génération automatisée de présentations}
+Une fois la donnée extraite et validée par l'IA, le système d'information doit restituer une valeur ajoutée exploitable pour l'utilisateur. La génération dynamique de documents repose sur l'interaction logicielle avec les standards de l'industrie (comme le standard \textit{Office Open XML} de Microsoft).
+
+Grâce à des bibliothèques de manipulation (telles que \textit{python-pptx}), il est possible d'éditer programmatiquement des présentations PowerPoint. Le système peut ouvrir un modèle de présentation d'entreprise (Template), repérer des marqueurs spécifiques, et injecter dynamiquement le texte structuré (expériences, compétences) ainsi que les images (photo de profil extraite) en respectant parfaitement la typographie et la charte graphique définies. Cela constitue l'étape finale du pipeline d'automatisation.
+
+
+\section{Conclusion}
+
+Dans ce chapitre, nous avons défini les concepts fondamentaux et les briques technologiques qui rendent possible l'automatisation intelligente des flux documentaires. Nous avons exploré comment le Traitement du Langage Naturel (NLP) et les Grands Modèles de Langage locaux permettent une compréhension profonde et sécurisée des données textuelles. De plus, nous avons mis en évidence l'importance critique de la Vision par Ordinateur (OCR et détection faciale) pour pallier la diversité des formats de CV, ainsi que le rôle essentiel des API modernes (FastAPI) et de la génération documentaire programmatique pour fournir un service complet de bout en bout. 
+
+Cette exploration théorique démontre la maturité de ces technologies pour résoudre des problématiques d'affaires concrètes. Le prochain chapitre procédera à une analyse approfondie des besoins de notre projet et détaillera l'étude technique de mise en œuvre, expliquant comment ces technologies ont été spécifiquement architecturées et orchestrées pour donner naissance à l'application AI-BioProfile.
+```

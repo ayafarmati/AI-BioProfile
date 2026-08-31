@@ -1,0 +1,18 @@
+
+\addcontentsline{toc}{chapter}{Conclusion Générale et Perspectives}
+
+Le projet AI-BioProfile au sein de SEGULA Technologies a été une réussite complète, démontrant l'efficacité de l'alliance entre l'Ingénierie Logicielle classique et l'Intelligence Artificielle.
+
+Nous avons réussi à remplacer un processus manuel fastidieux par un pipeline automatisé robuste. L'utilisation de technologies de Computer Vision (OpenCV) combinée à des heuristiques a permis de résoudre le problème complexe de l'extraction de photos sur des documents hétérogènes et scannés. La conception itérative du moteur d'extraction, passant d'un LLM textuel à un modèle multimodal (VLM), a permis d'extraire de la donnée structurée de haute qualité, en comprenant à la fois la sémantique et la mise en page des CV, tout en répondant aux exigences strictes de confidentialité des données inhérentes au monde du recrutement (exécution locale On-Premise). Enfin, le développement d'un générateur PowerPoint basé sur la manipulation de l'arbre XML garantit un rendu final professionnel, constant, et fidèle à la charte graphique de l'entreprise.
+
+L'intégration d'une interface web intégrant le principe de "Human-in-the-loop" a assuré une excellente adoption de l'outil, l'utilisateur final gardant toujours le contrôle sur les données générées par la machine avant la création du livrable définitif.
+
+\section*{Perspectives}
+Grâce aux dernières évolutions de l'architecture, des défis majeurs tels que le traitement par lots (Batch Processing) et l'analyse multimodale ont déjà été surmontés. Pour la suite, plusieurs évolutions restent envisageables :
+\begin{enumerate}
+    \item \textbf{Génération par Lots (Batch Zip) :} Si l'extraction par l'IA se fait déjà en masse, il conviendrait de pouvoir générer et télécharger l'ensemble des PowerPoint finalisés en une seule fois sous la forme d'une archive \texttt{.zip}.
+    \item \textbf{Base de données de talents :} Brancher le pipeline et l'historique des profils sur une base de données relationnelle (PostgreSQL) ou NoSQL (Elasticsearch). L'entreprise disposerait alors d'une CV-thèque structurée et pérenne, permettant des recherches sémantiques puissantes (par exemple : "Trouver tous les ingénieurs ayant fait du Python et résidant à Paris").
+    \item \textbf{Optimisation Hardware de l'Inférence :} L'utilisation de modèles VLM étant coûteuse en temps de calcul, le déploiement sur des serveurs équipés de GPUs dédiés permettrait de réduire drastiquement les délais de réponse lors de charges de requêtes élevées.
+\end{enumerate}
+
+Ce stage nous a permis d'acquérir une expertise technique précieuse sur des technologies modernes de l'intelligence artificielle et du backend web, tout en concevant un produit ayant un retour sur investissement (ROI) immédiat pour l'entreprise.
