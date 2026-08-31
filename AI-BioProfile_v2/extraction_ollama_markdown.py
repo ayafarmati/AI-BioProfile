@@ -11,7 +11,12 @@ from pydantic import BaseModel, Field
 import io
 import zipfile
 from docx import Document
+from dotenv import load_dotenv
 
+load_dotenv()
+
+DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+DEFAULT_OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 # ==============================================================================
 # CONFIGURATION TESSERACT
 # ==============================================================================
@@ -611,7 +616,7 @@ def _call_ollama_api_urllib(payload: dict, url: str) -> dict:
 # FONCTION PRINCIPALE (ORCHESTRATION)
 # ==============================================================================
 
-def extract_cv_data_llm(file_bytes: bytes, model_name: str = "qwen2.5:3b", ollama_url: str = "http://localhost:11434/api/chat") -> str:
+def extract_cv_data_llm(file_bytes: bytes, model_name: str = None, ollama_url: str = None) -> str:
     """
     Orchestre le processus d'extraction complet :
     1. PDF -> Markdown (ou OCR Tesseract)
@@ -620,6 +625,9 @@ def extract_cv_data_llm(file_bytes: bytes, model_name: str = "qwen2.5:3b", ollam
     4. Validation de la réponse brute via Pydantic
     5. Retour du JSON validé sous forme de chaîne.
     """
+    model_name = model_name or DEFAULT_OLLAMA_MODEL
+    ollama_url = ollama_url or DEFAULT_OLLAMA_URL
+    
     # 1. Extraction en Markdown ou OCR
     print("[INFO] Démarrage de l'extraction de texte...")
     cv_markdown = extract_text_from_pdf_as_markdown(file_bytes)
@@ -682,10 +690,13 @@ def extract_cv_data_llm(file_bytes: bytes, model_name: str = "qwen2.5:3b", ollam
         raise ValueError(f"Le JSON renvoyé ne correspond pas au schéma attendu : {e}")
 
 
-def extract_cv_data_llm_from_text(cv_text: str, model_name: str = "qwen2.5:3b", ollama_url: str = "http://localhost:11434/api/chat") -> str:
+def extract_cv_data_llm_from_text(cv_text: str, model_name: str = None, ollama_url: str = None) -> str:
     """
     Orchestre le processus d'extraction complet à partir de texte brut (utile pour DOCX et TXT).
     """
+    model_name = model_name or DEFAULT_OLLAMA_MODEL
+    ollama_url = ollama_url or DEFAULT_OLLAMA_URL
+    
     if not cv_text.strip():
         raise ValueError("Aucun texte fourni.")
         
