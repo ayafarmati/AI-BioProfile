@@ -64,6 +64,10 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
     if len(dispo) > 25:
         dispo = "Immédiate"
         
+    email = str(data.get("email", ""))
+    telephone = str(data.get("telephone", ""))
+    liens = format_as_newlines(flatten_data(data.get("liens", [])))
+        
     langues = format_as_newlines(flatten_data(data.get("langues", []), sep="\n", is_lang=True))
     
     def format_categorized_skills(skills_raw):
@@ -87,11 +91,12 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
             return "\n".join(lines)
         return format_as_newlines(flatten_data(skills_raw))
 
-    hard = format_categorized_skills(data.get("hard_skills", []))
+    hard = format_categorized_skills(data.get("technical_skills", data.get("hard_skills", [])))
     soft = format_as_newlines(flatten_data(data.get("soft_skills", [])))
-    outils = format_categorized_skills(data.get("outils_et_technologies", []))
+    outils = format_categorized_skills(data.get("tools", data.get("outils_et_technologies", [])))
+    formations = format_as_newlines(flatten_data(data.get("formations", [])))
     
-    projets = data.get("projets_et_experiences", [])
+    projets = data.get("experiences", data.get("projets_et_experiences", []))
     if isinstance(projets, dict):
         for v in projets.values():
             if isinstance(v, list):
@@ -102,8 +107,13 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
     titres_projets_list = []
     if isinstance(projets, list):
         for p in projets[:3]:
-            t = p.get("titre", "").strip()
-            d = p.get("description", "").strip()
+            t = p.get("titre_experience", p.get("titre", "")).strip()
+            d_raw = p.get("details_experience", p.get("description", ""))
+            
+            if isinstance(d_raw, list):
+                d = "\n".join(d_raw).strip()
+            else:
+                d = str(d_raw).strip()
             
             # Nettoyage des puces IA pour le titre
             t = t.replace('•', '').replace('-', '').strip()
@@ -134,6 +144,10 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
         "{{HARD}}": hard,
         "{{SOFT}}": soft,
         "{{OUTILS}}": outils,
+        "{{FORMATIONS}}": formations,
+        "{{EMAIL}}": email,
+        "{{TELEPHONE}}": telephone,
+        "{{LIENS}}": liens,
         "{{PROJET_TITRE}}": titres_projets,
         "{{PROJET_DESC}}": descs_projets
     }
@@ -149,12 +163,14 @@ def generate_bio_profile_dynamic(json_path="resultat_cv.json", template_path="Bi
         target_p = None
         target_r = None
         for p in shape.text_frame.paragraphs:
-            for r in p.runs:
-                if tag in r.text:
+            p_text = "".join(r.text for r in p.runs)
+            if tag in p_text:
+                if len(p.runs) > 0:
+                    p.runs[0].text = p_text
+                    for r in p.runs[1:]:
+                        r.text = ""
                     target_p = p
-                    target_r = r
-                    break
-            if target_p:
+                    target_r = p.runs[0]
                 break
                 
         if not target_p:

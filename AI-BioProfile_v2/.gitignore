@@ -13,6 +13,11 @@ sample_cv.txt
 static/temp_photo.png
 BioProfile_Generated.pptx
 sm/
-
+uploads/
+templates/
+profiles/
 # Configuration locale (Ollama / Environnement)
 .env
+
+static/temp_*.png
+debug_extracted_text.txt
