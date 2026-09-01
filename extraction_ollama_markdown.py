@@ -25,7 +25,7 @@ if os.path.exists(TESSERACT_DEFAULT_PATH):
     pytesseract.pytesseract.tesseract_cmd = TESSERACT_DEFAULT_PATH
 
 # ==============================================================================
-# MODÈLES PYDANTIC (Strictement identiques à la version originale)
+# MODÈLES PYDANTIC 
 # ==============================================================================
 
 class Experience(BaseModel):
@@ -101,7 +101,7 @@ class CVExtraction(BaseModel):
 # LOGIQUE D'EXTRACTION DE TEXTE
 # ==============================================================================
 
-# (Les fonctions manuelles de détection de gouttière ont été supprimées car on utilise le layout ML natif)
+
 
 def extract_text_from_pdf_as_markdown(file_bytes: bytes) -> str:
     """
