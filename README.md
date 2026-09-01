@@ -96,4 +96,4 @@ AI-BioProfile/
 ```
 
 ## 🤝 Crédits
-Projet de fin d'année réalisé par **Aya Farmati** au sein de SEGULA Technologies.
+Projet de fin d'année réalisé par **Aya Farmati** et **Mouaki Maryame** au sein de SEGULA Technologies.
