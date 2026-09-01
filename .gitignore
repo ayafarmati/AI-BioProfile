@@ -14,7 +14,9 @@ static/temp_photo.png
 BioProfile_Generated.pptx
 sm/
 uploads/
-templates/
+templates/*
+!templates/BioProfile_OFF.pptx
+!templates/BioProfile_OFF.jpeg
 profiles/
 # Configuration locale (Ollama / Environnement)
 .env
